@@ -1,3 +1,12 @@
+# Fresh Session Summary (2026-06-30)
+
+- **M0-M4 Complete**: The data-driven backend agent is feature-complete for CLI use.
+- **Current State**: 5 tools are live (`query_events`, `shot_map`, `pass_network`, `compare_players`, `tactics_lookup`). All run-of-play stat counts (excluding penalty shootouts) are consistent across the entire backend.
+- **Next Target (M5)**: Implement grounding verification: add a node to the agent loop that intersects the model's draft answer with canonical tool data and regenerates if discrepancies are found.
+- **Architecture**: LangGraph loop (plan → tools → answer). LiteLLM primary Gemini-Flash, Groq fallback. DuckDB store. Chroma-based RAG for tactics.
+- **CLI**: `cd backend && uv run python -m scripts.ask "..."`
+
+---
 [GAFFER_PLAN.md#459A]
 # Gaffer — v1 Build Plan & Project Spec
 
