@@ -92,13 +92,16 @@ def query_events(
     event_type: str | None = None,
     match_id: int | None = None,
     limit: int = 100,
+    include_shootouts: bool = False,
 ) -> pd.DataFrame:
     """Constrained, parameterized query over the events view.
 
     All filters are optional and combined with AND. This is the fixed-interface
     query layer the agent's ``query_events`` tool builds on (no free-form SQL).
+    Penalty-shootout events (period 5) are excluded by default to match the
+    rest of the store's run-of-play convention.
     """
-    where, params = _event_filters(player, team, event_type, match_id)
+    where, params = _event_filters(player, team, event_type, match_id, include_shootouts)
     params.append(limit)
     return con.execute(f"SELECT * FROM {_VIEW} {where} LIMIT ?", params).df()
 
@@ -108,8 +111,15 @@ def _event_filters(
     team: str | None,
     event_type: str | None,
     match_id: int | None,
+    include_shootouts: bool = False,
 ) -> tuple[str, list[object]]:
-    """Build a parameterized WHERE clause shared by query_events/count_events."""
+    """Build a parameterized WHERE clause shared by query_events/count_events.
+
+    Period 5 (penalty shootouts) is excluded by default so counts line up with
+    official run-of-play tallies — the convention every other helper in this
+    module already follows (``top_scorers``, ``get_player_shots``,
+    ``player_metrics``). Pass ``include_shootouts=True`` to opt back in.
+    """
     clauses: list[str] = []
     params: list[object] = []
     if player is not None:
@@ -124,6 +134,8 @@ def _event_filters(
     if match_id is not None:
         clauses.append("match_id = ?")
         params.append(match_id)
+    if not include_shootouts:
+        clauses.append(f"period <> {_SHOOTOUT_PERIOD}")
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     return where, params
 
@@ -134,9 +146,14 @@ def count_events(
     team: str | None = None,
     event_type: str | None = None,
     match_id: int | None = None,
+    include_shootouts: bool = False,
 ) -> int:
-    """True total of events matching the filters (independent of any row limit)."""
-    where, params = _event_filters(player, team, event_type, match_id)
+    """True total of events matching the filters (independent of any row limit).
+
+    Penalty-shootout events (period 5) are excluded by default — same
+    convention as ``query_events`` and the other helpers.
+    """
+    where, params = _event_filters(player, team, event_type, match_id, include_shootouts)
     return int(con.execute(f"SELECT COUNT(*) FROM {_VIEW} {where}", params).fetchone()[0])
 
 

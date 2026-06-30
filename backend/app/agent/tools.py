@@ -36,8 +36,6 @@ from . import rag
 
 logger = logging.getLogger(__name__)
 
-_SHOOTOUT_PERIOD = 5
-
 # Columns surfaced from raw event rows so tool output stays compact and readable.
 _EVENT_PREVIEW_COLS = [
     "player", "team", "type", "minute", "shot_outcome", "shot_statsbomb_xg",
@@ -142,8 +140,9 @@ def shot_map(player: str) -> dict[str, Any]:
     finally:
         con.close()
 
-    if "period" in df.columns:
-        df = df[df["period"] != _SHOOTOUT_PERIOD]
+    # store.query_events already excludes period 5 (penalty shootouts) by
+    # default — see store._event_filters. Run-of-play is the tournament-stat
+    # convention, matching top_scorers / player_metrics / get_player_shots.
 
     markers: list[dict[str, Any]] = []
     for _, r in df.iterrows():
