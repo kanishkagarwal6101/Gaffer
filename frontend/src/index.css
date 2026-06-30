@@ -1,0 +1,59 @@
+[index.css#84BD]
+1:@import "tailwindcss";
+2:
+3:/* Design tokens — exact values pulled from design_ref/Gaffer.dc.html */
+4:@theme {
+5:  --color-ink: #0d1311;          /* app background */
+6:  --color-rail: #0c110f;         /* chat rail background */
+7:  --color-panel: #18211e;        /* cards, input, pills */
+8:  --color-pitch: #0e1512;        /* pitch / canvas surface */
+9:  --color-line: #243029;         /* default border */
+10:  --color-line-hover: #2e3c33;   /* border hover (scrollbar / pills) */
+11:  --color-edge: #34474b;         /* focus / interactive border */
+12:  --color-fg: #ecf2ef;           /* primary text */
+13:  --color-muted: #8a9690;        /* secondary text */
+14:  --color-dim: #566059;          /* tertiary text / placeholder */
+15:  --color-faint: #3a463f;        /* separators */
+16:  --color-accent: #34d399;       /* tactics green */
+17:  --color-accent-hover: #43e3aa; /* green hover */
+18:  --color-amber: #e8a13a;        /* opponent (France) */
+19:  --color-pitch-line: #e8edeb;   /* chalk pitch lines */
+20:
+21:  --font-display: "Space Grotesk", sans-serif;
+22:  --font-body: "Inter", system-ui, sans-serif;
+23:  --font-mono: "JetBrains Mono", monospace;
+24:}
+25:
+26:* {
+27:  box-sizing: border-box;
+28:}
+29:
+30:html,
+31-34:body { … }
+35:
+36-40:body { … }
+41:
+42:#root {
+43:  height: 100%;
+44:}
+45:
+46:::placeholder {
+47:  color: #566059;
+48:}
+49:
+50-53:::-webkit-scrollbar { … }
+54-57:::-webkit-scrollbar-thumb { … }
+58:::-webkit-scrollbar-thumb:hover {
+59:  background: #2e3c33;
+60:}
+61:::-webkit-scrollbar-track {
+62:  background: transparent;
+63:}
+64:
+65-73:@keyframes gpulse { … }
+74-84:@keyframes gchalk { … }
+85-94:@keyframes gfade { … }
+95-105:@keyframes gdraw { … }
+106-114:@keyframes gdim { … }
+
+[…49ln elided; re-read needed ranges, e.g. /Users/kanishkagarwal/personal code/Gaffer/frontend/src/index.css:31-34,36-40]

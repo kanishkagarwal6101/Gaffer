@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+::placeholder{color:#566059}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#243029;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#2e3c33}
+::-webkit-scrollbar-track{background:transparent}
+@keyframes gpulse{0%,100%{opacity:1}50%{opacity:.28}}
+@keyframes gchalk{0%{stroke-dashoffset:120}50%{stroke-dashoffset:0}100%{stroke-dashoffset:-120}}
+@keyframes gfade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes gdraw{0%{stroke-dashoffset:680}55%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
+@keyframes gdim{0%,100%{opacity:.55}50%{opacity:1}}
+</style>
+</helmet>
+<div style="display:flex;flex-direction:column;height:100vh;background:#0D1311;color:#ECF2EF;font-family:'Inter',system-ui,sans-serif;overflow:hidden">
+
+  <div style="flex:none;height:54px;display:flex;align-items:center;gap:16px;padding:0 18px 0 20px;border-bottom:1px solid #243029">
+    <div style="display:flex;align-items:center;gap:9px">
+      <div style="width:9px;height:9px;background:#34D399;border-radius:2px"></div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:.2em;color:#ECF2EF">GAFFER</div>
+    </div>
+    <div style="width:1px;height:18px;background:#243029"></div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.07em;color:#8A9690">UEFA CHAMPIONS LEAGUE · 2024/25</div>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:#8A9690">
+      <span style="width:6px;height:6px;border-radius:50%;background:#34D399;animation:gpulse 2.4s ease-in-out infinite"></span>
+      GAFFER-TACTICAL v3 · READY
+    </div>
+    <button onClick="{{ goEmpty }}" style="margin-left:6px;display:flex;align-items:center;gap:6px;background:transparent;border:1px solid #243029;color:#ECF2EF;font-family:'Inter',sans-serif;font-size:12px;padding:6px 11px;border-radius:7px;cursor:pointer" style-hover="background:#18211E;border-color:#34474b">
+      <span style="font-size:13px;line-height:1;color:#34D399">+</span> New analysis
+    </button>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+
+    <div style="width:380px;flex:none;border-right:1px solid #243029;display:flex;flex-direction:column;min-height:0;background:#0C110F">
+
+      <div style="flex:1;overflow-y:auto;padding:22px 20px;display:flex;flex-direction:column;gap:24px">
+
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ true }}">
+          <div style="margin:auto 0;display:flex;flex-direction:column;gap:9px;text-align:left;opacity:.9">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:#566059">NO ANALYSIS LOADED</div>
+            <div style="font-size:13px;line-height:1.55;color:#8A9690">Ask a tactical or scouting question, or pick one of the prompts on the board.</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showPrebaked }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:24px">
+
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#8A9690">YOU</div>
+              <div style="font-size:13.5px;line-height:1.55;color:#ECF2EF">How did Real Madrid create chances against City's press?</div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="width:6px;height:6px;border-radius:50%;background:#34D399"></span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#8A9690">GAFFER</span>
+              </div>
+              <div style="font-size:13.5px;line-height:1.62;color:#ECF2EF">
+                They bypassed the first line through Valverde dropping to the right, then attacked the channel behind Gvardiol. Seven attempts worth
+                <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(52,211,153,.1);color:#34D399;border:1px solid rgba(52,211,153,.25);border-radius:5px;padding:0 6px;margin:0 1px">xG 2.34</span>,
+                but most were low-value — only the
+                <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(52,211,153,.1);color:#34D399;border:1px solid rgba(52,211,153,.25);border-radius:5px;padding:0 6px;margin:0 1px">0.76 xG</span>
+                cutback was a clear-cut chance. I've plotted every shot on the board →
+              </div>
+
+              <div onClick="{{ noop }}" style="margin-top:5px;border:1px solid #243029;border-radius:9px;overflow:hidden;background:#18211E;cursor:pointer" style-hover="border-color:rgba(52,211,153,.45)">
+                <svg viewBox="0 0 260 116" style="display:block;width:100%;height:auto;background:#0E1512">
+                  <g stroke="#E8EDEB" stroke-opacity=".14" stroke-width="1.2" fill="none" stroke-linecap="round">
+                    <rect x="6" y="6" width="248" height="104" rx="2"></rect>
+                    <line x1="130" y1="6" x2="130" y2="110"></line>
+                    <circle cx="130" cy="58" r="20"></circle>
+                    <rect x="6" y="32" width="34" height="52"></rect>
+                    <rect x="220" y="32" width="34" height="52"></rect>
+                  </g>
+                  <circle cx="232" cy="60" r="8" fill="#34D399" fill-opacity=".85"></circle>
+                  <circle cx="214" cy="44" r="5" fill="none" stroke="#34D399" stroke-opacity=".7" stroke-width="1.6"></circle>
+                  <circle cx="238" cy="74" r="4.5" fill="none" stroke="#34D399" stroke-opacity=".7" stroke-width="1.6"></circle>
+                  <circle cx="206" cy="66" r="4" fill="none" stroke="#34D399" stroke-opacity=".6" stroke-width="1.6"></circle>
+                  <circle cx="28" cy="56" r="6" fill="#E8A13A" fill-opacity=".8"></circle>
+                  <circle cx="44" cy="44" r="4" fill="none" stroke="#E8A13A" stroke-opacity=".6" stroke-width="1.6"></circle>
+                </svg>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-top:1px solid #243029;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.08em;color:#8A9690">
+                  <span>SHOT MAP · RMA vs MCI</span><span style="color:#34D399">EXPAND ↗</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#8A9690">YOU</div>
+              <div style="font-size:13.5px;line-height:1.55;color:#ECF2EF">Which was the best chance?</div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="width:6px;height:6px;border-radius:50%;background:#34D399"></span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#8A9690">GAFFER</span>
+              </div>
+              <div style="font-size:13.5px;line-height:1.62;color:#ECF2EF">
+                The
+                <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(52,211,153,.1);color:#34D399;border:1px solid rgba(52,211,153,.25);border-radius:5px;padding:0 6px;margin:0 1px">0.76 xG</span>
+                finish from the penalty spot — Vinícius's cutback, and the only one converted. Everything else sat under
+                <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(138,150,144,.12);color:#8A9690;border:1px solid #2e3c33;border-radius:5px;padding:0 6px;margin:0 1px">0.30 xG</span>.
+              </div>
+            </div>
+
+          </div>
+        </sc-if>
+
+        <sc-for list="{{ extra }}" as="m" hint-placeholder-count="0">
+          <div style="display:flex;flex-direction:column;gap:7px;animation:gfade .35s ease both">
+            <div style="display:flex;align-items:center;gap:7px">
+              <sc-if value="{{ m.showDot }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:50%;background:#34D399"></span></sc-if>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#8A9690">{{ m.label }}</span>
+            </div>
+            <div style="font-size:13.5px;line-height:1.6;color:#ECF2EF">{{ m.text }}</div>
+          </div>
+        </sc-for>
+
+        <sc-if value="{{ thinking }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:9px;animation:gfade .3s ease both">
+            <div style="display:flex;align-items:center;gap:7px">
+              <span style="width:6px;height:6px;border-radius:50%;background:#34D399;animation:gpulse 1.2s ease-in-out infinite"></span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#8A9690">GAFFER</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:11px">
+              <svg width="60" height="18" viewBox="0 0 60 18" fill="none">
+                <path d="M2,13 C11,2 18,17 27,8 S46,2 58,11" stroke="#34D399" stroke-width="2" stroke-linecap="round" style="stroke-dasharray:120;animation:gchalk 1.5s ease-in-out infinite"></path>
+              </svg>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#34D399">Analyzing…</span>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+
+      <div style="flex:none;border-top:1px solid #243029;padding:13px 14px">
+        <div style="display:flex;align-items:center;gap:8px;background:#18211E;border:1px solid #243029;border-radius:11px;padding:7px 7px 7px 13px" style-focus-within="border-color:#34474b">
+          <input type="text" value="{{ input }}" onChange="{{ onInput }}" onKeyDown="{{ onKey }}" placeholder="Ask Gaffer a tactical question…" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:#ECF2EF;font-family:'Inter',sans-serif;font-size:13px" />
+          <button onClick="{{ sendInput }}" style="flex:none;width:32px;height:32px;border:none;border-radius:8px;background:#34D399;color:#0D1311;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:#43e3aa">↑</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:#0D1311;position:relative">
+
+      <sc-if value="{{ isMain }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="Analysis canvas" style="flex:1;display:flex;flex-direction:column;padding:24px 36px 26px;min-height:0">
+
+          <div style="flex:none;display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
+            <div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#8A9690;margin-bottom:8px">SHOT MAP · UCL FINAL · ATTACKING →</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.01em;color:#ECF2EF">Real Madrid <span style="color:#8A9690;font-weight:500">1–1</span> Manchester City</div>
+            </div>
+            <div style="display:flex;flex:none;border:1px solid #243029;border-radius:8px;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:11px">
+              <div style="padding:7px 14px;background:rgba(52,211,153,.12);color:#34D399">Shot Map</div>
+              <div style="padding:7px 14px;color:#8A9690;border-left:1px solid #243029;cursor:pointer" style-hover="color:#ECF2EF">Pass Network</div>
+              <div style="padding:7px 14px;color:#8A9690;border-left:1px solid #243029;cursor:pointer" style-hover="color:#ECF2EF">Radar</div>
+            </div>
+          </div>
+
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0;padding:20px 0">
+            <svg viewBox="-30 -30 1110 740" style="width:100%;max-width:800px;height:auto;max-height:100%">
+              <rect x="0" y="0" width="1050" height="680" fill="#0E1512"></rect>
+              <g stroke="#E8EDEB" stroke-opacity=".14" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="0" y="0" width="1050" height="680"></rect>
+                <line x1="525" y1="0" x2="525" y2="680"></line>
+                <circle cx="525" cy="340" r="91.5"></circle>
+                <rect x="0" y="138.5" width="165" height="403"></rect>
+                <rect x="0" y="248" width="55" height="184"></rect>
+                <path d="M165,267 A91.5,91.5 0 0 1 165,413"></path>
+                <rect x="885" y="138.5" width="165" height="403"></rect>
+                <rect x="995" y="248" width="55" height="184"></rect>
+                <path d="M885,267 A91.5,91.5 0 0 0 885,413"></path>
+                <rect x="-12" y="303.5" width="12" height="73"></rect>
+                <rect x="1050" y="303.5" width="12" height="73"></rect>
+              </g>
+              <g fill="#E8EDEB" fill-opacity=".16" stroke="none">
+                <circle cx="110" cy="340" r="3"></circle>
+                <circle cx="940" cy="340" r="3"></circle>
+                <circle cx="525" cy="340" r="3.5"></circle>
+              </g>
+
+              <sc-for list="{{ shots }}" as="s" hint-placeholder-count="12">
+                <circle cx="{{ s.cx }}" cy="{{ s.cy }}" r="{{ s.r }}" fill="{{ s.fill }}" stroke="{{ s.stroke }}" stroke-width="{{ s.strokeWidth }}" fill-opacity="{{ s.fillOpacity }}" stroke-opacity="{{ s.strokeOpacity }}"></circle>
+              </sc-for>
+
+              <sc-if value="{{ annotate }}" hint-placeholder-val="{{ true }}">
+                <line x1="952" y1="352" x2="858" y2="592" stroke="#34D399" stroke-width="1.4" stroke-opacity=".45"></line>
+                <circle cx="858" cy="592" r="2.5" fill="#34D399" stroke="none"></circle>
+                <text x="845" y="598" text-anchor="end" fill="#34D399" fill-opacity=".95" font-family="JetBrains Mono, monospace" font-size="16.5" letter-spacing="0.5">0.76 xG · VINÍCIUS · GOAL</text>
+              </sc-if>
+            </svg>
+
+            <sc-if value="{{ thinking }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:rgba(13,19,17,.74);backdrop-filter:blur(2px)">
+                <svg width="220" height="140" viewBox="0 0 220 140" fill="none">
+                  <path d="M20,120 C60,40 90,100 120,60 S180,30 205,70" stroke="#34D399" stroke-width="2.2" stroke-linecap="round" style="stroke-dasharray:680;animation:gdraw 1.8s ease-in-out infinite"></path>
+                  <circle cx="205" cy="70" r="6" fill="#34D399" style="animation:gdim 1.8s ease-in-out infinite"></circle>
+                </svg>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.14em;color:#34D399">DRAWING UP THE DATA…</span>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;padding-top:8px">
+            <div style="display:flex;align-items:center;gap:18px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em;color:#8A9690;flex-wrap:wrap">
+              <span style="display:flex;align-items:center;gap:7px"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#34D399" fill-opacity=".85"></circle></svg>GOAL</span>
+              <span style="display:flex;align-items:center;gap:7px"><svg width="12" height="12"><circle cx="6" cy="6" r="4.6" fill="none" stroke="#34D399" stroke-width="1.6" stroke-opacity=".8"></circle></svg>MISS / SAVED</span>
+              <span style="display:flex;align-items:center;gap:7px"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#E8A13A" fill-opacity=".82"></circle></svg>MAN CITY</span>
+              <span style="color:#566059">◦ MARKER SIZE = xG</span>
+            </div>
+            <div style="flex:none;display:flex;align-items:center;gap:0;background:#18211E;border:1px solid #243029;border-radius:8px;padding:9px 15px;font-family:'JetBrains Mono',monospace;font-size:13.5px;letter-spacing:.02em;white-space:nowrap">
+              <span style="color:#8A9690">xG </span><span style="color:#34D399;font-weight:600">2.34</span>
+              <span style="color:#3a463f">&nbsp;·&nbsp;</span>
+              <span style="color:#8A9690">SHOTS </span><span style="color:#ECF2EF;font-weight:600">7</span>
+              <span style="color:#3a463f">&nbsp;·&nbsp;</span>
+              <span style="color:#8A9690">GOALS </span><span style="color:#34D399;font-weight:600">1</span>
+              <span style="color:#3a463f">&nbsp;·&nbsp;</span>
+              <span style="color:#34D399;font-weight:600">+0.66</span><span style="color:#8A9690"> vs xG</span>
+            </div>
+          </div>
+
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Landing" style="flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
+          <svg viewBox="-30 -30 1110 740" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%">
+            <g stroke="#E8EDEB" stroke-opacity=".05" stroke-width="2" fill="none" stroke-linecap="round">
+              <rect x="0" y="0" width="1050" height="680"></rect>
+              <line x1="525" y1="0" x2="525" y2="680"></line>
+              <circle cx="525" cy="340" r="91.5"></circle>
+              <rect x="0" y="138.5" width="165" height="403"></rect>
+              <rect x="885" y="138.5" width="165" height="403"></rect>
+            </g>
+          </svg>
+
+          <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;max-width:540px;padding:0 28px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:62px;letter-spacing:.14em;color:#ECF2EF;line-height:1">GAFFER</div>
+            <div style="width:48px;height:3px;background:#34D399;border-radius:2px;margin:14px 0 12px"></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.28em;color:#8A9690;margin-bottom:30px">CONVERSATIONAL FOOTBALL ANALYST</div>
+            <div style="display:flex;flex-direction:column;gap:10px;width:100%">
+              <sc-for list="{{ examples }}" as="ex" hint-placeholder-count="4">
+                <div onClick="{{ ex.onClick }}" style="display:flex;align-items:center;gap:13px;padding:14px 16px;background:#18211E;border:1px solid #243029;border-radius:10px;cursor:pointer;transition:border-color .15s,background .15s" style-hover="border-color:rgba(52,211,153,.5);background:#1b2723">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#34D399">→</span>
+                  <span style="font-size:13.5px;color:#ECF2EF;line-height:1.4">{{ ex.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showOpponent&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Shot map&quot;},&quot;showAnnotation&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Shot map&quot;}}">
+class Component extends DCLogic {
+  state = { view: 'main', fresh: false, input: '', thinking: false, extra: [] };
+
+  _send(text) {
+    if (!text || !text.trim()) return;
+    const t = text.trim();
+    this.setState(s => ({ view: 'main', input: '', thinking: true,
+      extra: [...s.extra, { role: 'user', label: 'YOU', showDot: false, text: t }] }));
+    clearTimeout(this._t);
+    this._t = setTimeout(() => {
+      this.setState(s => ({ thinking: false,
+        extra: [...s.extra, { role: 'gaffer', label: 'GAFFER', showDot: true,
+          text: "Mapped it on the board. The shape of the data is consistent — most of the value concentrates in the right half-space, while the rest are low-percentage attempts from distance. One high-xG chance is what separated the sides." }] }));
+    }, 2000);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const examples = [
+      "Compare Ronaldo and Messi's shot maps",
+      "How did the winners break a low block?",
+      "Map City's progressive passes into the final third",
+      "Where is Real Madrid most vulnerable in transition?",
+    ].map(text => ({ text, onClick: () => { this.setState({ fresh: true }); this._send(text); } }));
+
+    const madrid = [
+      { xg: 0.76, goal: true,  cx: 952, cy: 352 },
+      { xg: 0.45, goal: false, cx: 902, cy: 300 },
+      { xg: 0.34, goal: false, cx: 968, cy: 402 },
+      { xg: 0.28, goal: false, cx: 884, cy: 262 },
+      { xg: 0.21, goal: false, cx: 905, cy: 432 },
+      { xg: 0.18, goal: false, cx: 862, cy: 206 },
+      { xg: 0.12, goal: false, cx: 846, cy: 470 },
+    ];
+    const city = [
+      { xg: 0.55, goal: true,  cx: 108, cy: 330 },
+      { xg: 0.30, goal: false, cx: 96,  cy: 362 },
+      { xg: 0.22, goal: false, cx: 150, cy: 292 },
+      { xg: 0.15, goal: false, cx: 132, cy: 402 },
+      { xg: 0.09, goal: false, cx: 176, cy: 250 },
+    ];
+    const mk = (arr, color) => arr.map(d => ({
+      cx: d.cx, cy: d.cy, r: 5 + d.xg * 20,
+      fill: d.goal ? color : 'none', stroke: color,
+      strokeWidth: d.goal ? 1 : 2.5,
+      fillOpacity: d.goal ? Math.min(0.92, 0.45 + d.xg * 0.55) : 0,
+      strokeOpacity: d.goal ? 0.9 : 0.7,
+    }));
+    const showOpp = this.props.showOpponent ?? true;
+    const shots = mk(madrid, '#34D399').concat(showOpp ? mk(city, '#E8A13A') : []);
+
+    return {
+      view: s.view, input: s.input, thinking: s.thinking, extra: s.extra,
+      examples, shots,
+      annotate: this.props.showAnnotation ?? true,
+      isMain: s.view === 'main', isEmpty: s.view === 'empty',
+      showPrebaked: s.view === 'main' && !s.fresh,
+      noop: () => {},
+      onInput: e => this.setState({ input: e.target.value }),
+      onKey: e => { if (e.key === 'Enter') { e.preventDefault(); this._send(this.state.input); } },
+      sendInput: () => this._send(this.state.input),
+      goEmpty: () => this.setState({ view: 'empty', fresh: true, extra: [] }),
+    };
+  }
+}
+</script>
+</body>
+</html>

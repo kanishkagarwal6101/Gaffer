@@ -1,0 +1,335 @@
+{
+  "_generated": "scripts/gen_shotmap.py — do not edit by hand",
+  "matchId": 3869685,
+  "competition": "FIFA WORLD CUP 2022 · FINAL",
+  "home": {
+    "team": "Argentina",
+    "goals": 3
+  },
+  "away": {
+    "team": "France",
+    "goals": 3
+  },
+  "subject": "Argentina",
+  "opponent": "France",
+  "shots": {
+    "subject": [
+      {
+        "cx": 808.5,
+        "cy": 255.0,
+        "xg": 0.0245,
+        "goal": false,
+        "player": "Allister",
+        "team": "Argentina",
+        "minute": 4,
+        "outcome": "Saved"
+      },
+      {
+        "cx": 868.0,
+        "cy": 407.2,
+        "xg": 0.0628,
+        "goal": false,
+        "player": "Paul",
+        "team": "Argentina",
+        "minute": 7,
+        "outcome": "Blocked"
+      },
+      {
+        "cx": 902.1,
+        "cy": 294.1,
+        "xg": 0.1068,
+        "goal": false,
+        "player": "Di María",
+        "team": "Argentina",
+        "minute": 16,
+        "outcome": "Off T"
+      },
+      {
+        "cx": 945.0,
+        "cy": 340.0,
+        "xg": 0.7835,
+        "goal": true,
+        "player": "Messi",
+        "team": "Argentina",
+        "minute": 22,
+        "outcome": "Goal"
+      },
+      {
+        "cx": 825.1,
+        "cy": 199.8,
+        "xg": 0.0106,
+        "goal": false,
+        "player": "Allister",
+        "team": "Argentina",
+        "minute": 31,
+        "outcome": "Wayward"
+      },
+      {
+        "cx": 978.2,
+        "cy": 272.8,
+        "xg": 0.3034,
+        "goal": true,
+        "player": "Di María",
+        "team": "Argentina",
+        "minute": 35,
+        "outcome": "Goal"
+      },
+      {
+        "cx": 903.9,
+        "cy": 444.6,
+        "xg": 0.0402,
+        "goal": false,
+        "player": "Paul",
+        "team": "Argentina",
+        "minute": 48,
+        "outcome": "Saved"
+      },
+      {
+        "cx": 966.9,
+        "cy": 211.6,
+        "xg": 0.0595,
+        "goal": false,
+        "player": "Álvarez",
+        "team": "Argentina",
+        "minute": 58,
+        "outcome": "Saved"
+      },
+      {
+        "cx": 959.9,
+        "cy": 391.0,
+        "xg": 0.1156,
+        "goal": false,
+        "player": "Messi",
+        "team": "Argentina",
+        "minute": 59,
+        "outcome": "Off T"
+      },
+      {
+        "cx": 865.4,
+        "cy": 273.7,
+        "xg": 0.0416,
+        "goal": false,
+        "player": "Fernandez",
+        "team": "Argentina",
+        "minute": 71,
+        "outcome": "Saved"
+      },
+      {
+        "cx": 806.8,
+        "cy": 305.2,
+        "xg": 0.0302,
+        "goal": false,
+        "player": "Fernandez",
+        "team": "Argentina",
+        "minute": 83,
+        "outcome": "Blocked"
+      },
+      {
+        "cx": 841.8,
+        "cy": 347.6,
+        "xg": 0.043,
+        "goal": false,
+        "player": "Messi",
+        "team": "Argentina",
+        "minute": 96,
+        "outcome": "Saved"
+      },
+      {
+        "cx": 859.2,
+        "cy": 202.3,
+        "xg": 0.0193,
+        "goal": false,
+        "player": "Allister",
+        "team": "Argentina",
+        "minute": 92,
+        "outcome": "Off T"
+      },
+      {
+        "cx": 952.0,
+        "cy": 385.0,
+        "xg": 0.2326,
+        "goal": false,
+        "player": "Martínez",
+        "team": "Argentina",
+        "minute": 104,
+        "outcome": "Blocked"
+      },
+      {
+        "cx": 842.6,
+        "cy": 419.9,
+        "xg": 0.0206,
+        "goal": false,
+        "player": "Montiel",
+        "team": "Argentina",
+        "minute": 104,
+        "outcome": "Blocked"
+      },
+      {
+        "cx": 919.6,
+        "cy": 284.8,
+        "xg": 0.1403,
+        "goal": false,
+        "player": "Martínez",
+        "team": "Argentina",
+        "minute": 105,
+        "outcome": "Off T"
+      },
+      {
+        "cx": 906.5,
+        "cy": 474.3,
+        "xg": 0.0248,
+        "goal": false,
+        "player": "Messi",
+        "team": "Argentina",
+        "minute": 106,
+        "outcome": "Saved"
+      },
+      {
+        "cx": 1001.0,
+        "cy": 442.0,
+        "xg": 0.1041,
+        "goal": false,
+        "player": "Martínez",
+        "team": "Argentina",
+        "minute": 107,
+        "outcome": "Saved"
+      },
+      {
+        "cx": 1020.2,
+        "cy": 365.5,
+        "xg": 0.4884,
+        "goal": true,
+        "player": "Messi",
+        "team": "Argentina",
+        "minute": 107,
+        "outcome": "Goal"
+      },
+      {
+        "cx": 969.5,
+        "cy": 353.6,
+        "xg": 0.1066,
+        "goal": false,
+        "player": "Martínez",
+        "team": "Argentina",
+        "minute": 122,
+        "outcome": "Off T"
+      }
+    ],
+    "opponent": [
+      {
+        "cx": 57.7,
+        "cy": 385.9,
+        "xg": 0.0962,
+        "goal": false,
+        "player": "Kolo Muani",
+        "team": "France",
+        "minute": 67,
+        "outcome": "Off T"
+      },
+      {
+        "cx": 153.1,
+        "cy": 442.8,
+        "xg": 0.0506,
+        "goal": false,
+        "player": "Mbappé",
+        "team": "France",
+        "minute": 70,
+        "outcome": "Off T"
+      },
+      {
+        "cx": 116.0,
+        "cy": 340.0,
+        "xg": 0.7835,
+        "goal": true,
+        "player": "Mbappé",
+        "team": "France",
+        "minute": 79,
+        "outcome": "Goal"
+      },
+      {
+        "cx": 133.0,
+        "cy": 424.2,
+        "xg": 0.1017,
+        "goal": true,
+        "player": "Mbappé",
+        "team": "France",
+        "minute": 80,
+        "outcome": "Goal"
+      },
+      {
+        "cx": 210.9,
+        "cy": 406.3,
+        "xg": 0.0324,
+        "goal": false,
+        "player": "Mbappé",
+        "team": "France",
+        "minute": 92,
+        "outcome": "Blocked"
+      },
+      {
+        "cx": 97.1,
+        "cy": 437.8,
+        "xg": 0.0933,
+        "goal": false,
+        "player": "Rabiot",
+        "team": "France",
+        "minute": 93,
+        "outcome": "Saved"
+      },
+      {
+        "cx": 264.3,
+        "cy": 340.8,
+        "xg": 0.023,
+        "goal": false,
+        "player": "Fofana",
+        "team": "France",
+        "minute": 99,
+        "outcome": "Blocked"
+      },
+      {
+        "cx": 162.7,
+        "cy": 453.9,
+        "xg": 0.0308,
+        "goal": false,
+        "player": "Mbappé",
+        "team": "France",
+        "minute": 115,
+        "outcome": "Blocked"
+      },
+      {
+        "cx": 94.0,
+        "cy": 340.0,
+        "xg": 0.7835,
+        "goal": true,
+        "player": "Mbappé",
+        "team": "France",
+        "minute": 117,
+        "outcome": "Goal"
+      },
+      {
+        "cx": 142.6,
+        "cy": 296.6,
+        "xg": 0.2775,
+        "goal": false,
+        "player": "Kolo Muani",
+        "team": "France",
+        "minute": 122,
+        "outcome": "Saved"
+      }
+    ]
+  },
+  "stats": {
+    "xg": 2.76,
+    "shots": 20,
+    "goals": 3,
+    "vsXg": 0.24
+  },
+  "topChance": {
+    "xg": 0.7835,
+    "player": "Messi",
+    "goal": true,
+    "cx": 945.0,
+    "cy": 340.0,
+    "label": "0.78 xG · MESSI · GOAL"
+  }
+}

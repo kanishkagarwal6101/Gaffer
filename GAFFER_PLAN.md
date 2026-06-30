@@ -1,3 +1,4 @@
+[GAFFER_PLAN.md#459A]
 # Gaffer — v1 Build Plan & Project Spec
 
 > **How to use this doc:** Drop it in the repo root as `PLAN.md`. Tell Cursor: *"Read PLAN.md — this is the source of truth for the project; keep changes consistent with it."* Cursor holds whole-project structure; use the Claude Code CLI for the hard isolated modules (marked **[CC]** in the milestones).
@@ -30,7 +31,7 @@ A conversational football analyst grounded in **real StatsBomb event data**. You
 | Pitch viz | `mplsoccer` (matplotlib) | Free | — |
 | Agent/orchestration | LangGraph + LiteLLM (OSS) | Free | — |
 | Backend | FastAPI, run locally | Free | Deploy later on a free host |
-| Frontend | Next.js on Vercel (Hobby) | Free | — |
+| Frontend | React + Vite on Vercel (Hobby) | Free | — |
 
 **Net runtime cost: ₹0.** The only paid thing in your world is the Claude/Cursor subscription you already have for *coding*, not for the app.
 
@@ -45,7 +46,7 @@ A conversational football analyst grounded in **real StatsBomb event data**. You
 - **`statsbombpy` → Parquet → DuckDB** — pull free event data once, cache as Parquet, query with DuckDB (SQL over files, no DB server).
 - **`sentence-transformers` + Chroma** — local, free RAG over a small tactics knowledge base you write yourself.
 - **`mplsoccer`** — football-correct pitch plots (shot maps, pass networks, heatmaps) rendered server-side to PNG.
-- **Next.js (App Router) + React + Tailwind** — chat UI + a panel that renders returned visuals. Dark "tactics board" aesthetic.
+- **React + Vite + TypeScript + Tailwind** — single-page chat UI + a panel that renders returned visuals. Dark "tactics board" aesthetic.
 
 ---
 
@@ -72,7 +73,7 @@ gaffer/
 │   │   └── llm.py           # LiteLLM client + fallback
 │   └── data_cache/          # parquet files (gitignored)
 ├── tactics_kb/              # markdown notes on tactical concepts (your RAG source)
-└── frontend/                # Next.js app
+└── frontend/                # React + Vite (TypeScript) app
 ```
 
 ---
@@ -109,18 +110,30 @@ gaffer/
 
 ## 6. Backend API (FastAPI)
 
-- `POST /chat` → body `{ message, session_id }` → runs the agent → returns `{ answer, visuals: [urls], stats }`.
-- Serve generated viz images statically (or return base64 for v1 simplicity).
+- `POST /chat` → body `{ message, session_id }` → runs the agent → returns a structured answer object the frontend can render natively:
+  ```
+  {
+    answer_text: str,
+    shots:   [ { player, team, minute, x, y, xg, outcome, is_goal } ],   # interactive shot-map markers
+    stats:   { xg, shots, goals, xg_diff, ... },                 # canvas stat pill
+    cited_stats: [ ... ],                                        # numbers the grounding check verified
+    visuals: [url]                                               # optional PNG (export/fallback only)
+  }
+  ```
+- **The analysis canvas draws the pitch as native SVG from `shots`/`stats`** (crisp, interactive, matches the design export) — this is the primary path. `mplsoccer` PNGs are an optional export/fallback nicety (return as a static URL or base64), not the main render path.
 - Session memory: in-memory dict for v1; SQLite if you want persistence later.
 
 ---
 
-## 7. Frontend (Next.js)
+## 7. Frontend (React + Vite, TypeScript)
 
-- Chat interface: message list, input box; render assistant text + inline viz images.
-- Calls the backend `/chat`. Streaming (SSE) is optional for v1.
-- Tailwind, dark tactics-board look. Backend URL via env var.
-- Deploy to Vercel (Hobby, free).
+- **Two-pane layout** (per `design_ref/`): a left **chat rail** (380px — message list + input) and a right **analysis canvas** that renders the shot map / pass network / radar.
+- Single-page React app scaffolded with Vite (`react-ts` template); no SSR.
+- **Renders the pitch as native SVG** from the structured `shots`/`stats` in the `/chat` response (chalk-line "tactics board" aesthetic) rather than dropping in a PNG. An `imageSrc` hook exists on `<AnalysisCanvas>` as a fallback for backend-rendered PNGs.
+- **Markers are interactive** — each shot is a real data point you can hover (preview) or click (pin) to surface a tooltip with `player · minute · xG · outcome`. Because the dots are SVG bound to the data (not a flat image), this comes for free and is the main reason we render natively.
+- Calls the backend `/chat` via `fetch`. Streaming (SSE) is optional for v1.
+- Tailwind, dark tactics-board look (fonts: Space Grotesk / Inter / JetBrains Mono). Backend URL via env var (`VITE_API_URL`).
+- Deploy the static build to Vercel (Hobby, free).
 
 ---
 
@@ -128,14 +141,14 @@ gaffer/
 
 | # | Goal | Tool |
 |---|---|---|
-| **M0** | Scaffold repo + envs (`uv` backend, Next.js frontend), `.env.example`, run `/init` for CLAUDE.md | Cursor |
+| **M0** | Scaffold repo + envs (`uv` backend, React + Vite frontend), `.env.example`, run `/init` for CLAUDE.md | Cursor |
 | **M1** | Data pipeline: pull & cache one competition's events to Parquet; DuckDB view; pass the sanity gate | Cursor + **[CC]** for ingest logic |
 | **M2** | One tool end-to-end: `shot_map` for a chosen player → correct xG → rendered PNG. Proves data→viz path | **[CC]** |
 | **M3** | The agent loop: wire LangGraph + LiteLLM(Gemini), expose `query_events` + `shot_map`, get one grounded text+viz answer | **[CC]** |
 | **M4** | Add `pass_network`, `compare_players`, and `tactics_lookup` (Chroma RAG) | Cursor + **[CC]** |
 | **M5** | Grounding check + structured final output | **[CC]** |
 | **M6** | FastAPI `/chat` endpoint + static viz serving | Cursor |
-| **M7** | Next.js chat UI rendering answers + visuals | Cursor |
+| **M7** | React/Vite chat UI rendering answers + visuals | Cursor |
 | **M8** | Polish, deploy (Vercel + free backend host), README with a demo GIF | Cursor |
 
 Ship M1–M3 first and you already have a demoable thing. M4–M8 make it portfolio-grade.
