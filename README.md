@@ -2,7 +2,7 @@
 
 A conversational football analyst grounded in **real StatsBomb event data**. Ask a tactical or scouting question in plain English; an agent retrieves the relevant data, runs the analysis, and answers with reasoning **plus** an interactive pitch visualization — and it verifies its own numbers before answering.
 
-> **Status:** early build. The data pipeline, the data-driven interactive frontend shot map, and the LangGraph agent loop (CLI) are working. The grounding check, `/chat` API, and live frontend wiring are next. See [`GAFFER_PLAN.md`](./GAFFER_PLAN.md) for the full spec and roadmap.
+> **Status:** early build. Working: data pipeline; data-driven interactive frontend shot map; LangGraph agent loop (CLI) with five tools — `query_events`, `shot_map`, `pass_network`, `compare_players`, and `tactics_lookup` (Chroma RAG over `tactics_kb/`). The grounding check, `/chat` API, and live frontend wiring are next. See [`GAFFER_PLAN.md`](./GAFFER_PLAN.md) for the full spec and roadmap.
 
 ---
 
@@ -21,7 +21,7 @@ A conversational football analyst grounded in **real StatsBomb event data**. Ask
 | Backend | Python 3.12 · `uv` · FastAPI |
 | Agent | LangGraph (plan → tools → answer; grounding check lands in M5) + LiteLLM (Gemini + Groq fallback) |
 | Data | `statsbombpy` → Parquet → DuckDB |
-| RAG | `sentence-transformers` + Chroma (local) |
+| RAG | `sentence-transformers` + Chroma (local, persistent under `backend/data_cache/chroma/`) |
 | Viz | Native SVG pitch (primary) · `mplsoccer` PNG (export/fallback) |
 | Frontend | React + Vite + TypeScript + Tailwind |
 
@@ -44,7 +44,7 @@ Gaffer/
 │   ├── scripts/             # ask.py (agent CLI), gen_shotmap.py, verify_top_scorers.py
 │   └── data_cache/          # Parquet cache (gitignored)
 ├── frontend/                # React + Vite app (two-pane chat + analysis canvas)
-└── tactics_kb/              # markdown notes for RAG
+└── tactics_kb/              # low_block / high_press / overload / xg / pass_network notes (RAG corpus)
 ```
 
 ---
@@ -102,7 +102,12 @@ uv run python -m scripts.test_shot_map "Lionel Andrés Messi Cuccittini"
 cd backend
 uv run python -m scripts.ask "Show me Messi's shot map from this tournament"
 uv run python -m scripts.ask "How many shots did Mbappe take?"
+uv run python -m scripts.ask "Show me the pass network for France vs Argentina"
+uv run python -m scripts.ask "Compare Mbappe and Messi"
+uv run python -m scripts.ask "What is a low block?"
 ```
+
+> On first use, `tactics_lookup` downloads a ~80MB sentence-transformers model (`all-MiniLM-L6-v2`) into the local Hugging Face cache and embeds the `tactics_kb/` notes into a persistent Chroma index under `backend/data_cache/chroma/`. Subsequent runs reuse both.
 
 Needs `GEMINI_API_KEY` (and optionally `GROQ_API_KEY`) in the repo-root `.env`; a Gemini rate-limit automatically falls back to Groq.
 
@@ -129,7 +134,7 @@ No StatsBomb credentials are needed for open data. Never commit `.env`.
 | M1 | Data pipeline: StatsBomb → Parquet → DuckDB, sanity gate | done |
 | M2 | `shot_map` tool end-to-end (data → viz) | done |
 | M3 | Agent loop: LangGraph + LiteLLM, `query_events` + `shot_map` tools, CLI answer | done |
-| M4 | `pass_network`, `compare_players`, `tactics_lookup` (RAG) | |
+| M4 | `pass_network`, `compare_players`, `tactics_lookup` (RAG) | done |
 | M5 | Grounding check + structured final output | |
 | M6 | FastAPI `/chat` endpoint | |
 | M7 | Chat UI rendering answers + visuals | |

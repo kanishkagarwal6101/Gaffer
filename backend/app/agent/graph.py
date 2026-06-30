@@ -30,13 +30,24 @@ _SYSTEM_PROMPT = (
     "You are Gaffer, a football analyst grounded in real StatsBomb event data "
     "from the FIFA World Cup 2022. Answer tactical and scouting questions in "
     "clear, concise prose.\n\n"
+    "Tools — pick the one that matches the question:\n"
+    "- `shot_map(player)` — a player's shooting, chances, xG, or finishing.\n"
+    "- `query_events(filters)` — look up or count events (shots, passes, etc).\n"
+    "- `pass_network(team, opponent|match_id)` — how a team built up in one "
+    "match (e.g. 'France's pass network vs Argentina'). Always pass an opponent "
+    "or match id along with the team.\n"
+    "- `compare_players(player_a, player_b)` — radar comparison of two players' "
+    "tournament metrics (shots, goals, xG, key passes, assists, progressive "
+    "passes). Use for 'compare X and Y' or 'who was better at ...'.\n"
+    "- `tactics_lookup(query)` — a tactical concept ('what is a low block?', "
+    "'explain xG'). Returns short reference chunks; ground definitions in them.\n\n"
     "Rules:\n"
     "- ALWAYS obtain numbers from the tools; never invent or recall stats from "
     "memory. If you need a figure, call a tool.\n"
-    "- Use `shot_map` for anything about a player's shooting, chances, xG, or "
-    "finishing. Use `query_events` to look up or count events.\n"
     "- Once you have the data you need, write the final answer directly (no more "
-    "tool calls). Reference the key numbers (shots, goals, xG) explicitly.\n"
+    "tool calls). Reference the real numbers the tools returned.\n"
+    "- For a tactics_lookup answer, summarise the retrieved chunks in your own "
+    "words and cite the source file (e.g. 'low_block.md').\n"
     "- Keep it to a few sentences. Be specific and analytical, not generic."
 )
 
@@ -114,40 +125,29 @@ def tools_node(state: AgentState) -> AgentState:
 
 
 def answer_node(state: AgentState) -> AgentState:
-    """Assemble the structured AgentAnswer from the draft + tool outputs."""
+    """Assemble the structured AgentAnswer from the draft + tool outputs.
+
+    Iterates over every tool result and asks the per-tool extractor what to
+    surface in ``visuals``/``cited_stats``. Errored results are skipped. Image
+    URLs are de-duplicated while preserving the order the tools ran in.
+    """
     results = state.get("tool_results", [])
 
     visuals: list[str] = []
     cited: list[CitedStat] = []
-
-    shot_result = next(
-        (
-            r
-            for r in reversed(results)
-            if r.get("tool") == "shot_map" and not r.get("error")
-        ),
-        None,
-    )
-    if shot_result:
-        s = shot_result.get("stats") or {}
-        player = shot_result.get("player", "player")
-        if s:
-            cited += [
-                CitedStat(label=f"{player} shots", value=str(s["shots"]), source="shot_map"),
-                CitedStat(label=f"{player} goals", value=str(s["goals"]), source="shot_map"),
-                CitedStat(label=f"{player} xG", value=f"{s['xg']:.2f}", source="shot_map"),
-            ]
-        if shot_result.get("image_url"):
-            visuals.append(shot_result["image_url"])
-
+    seen_visuals: set[str] = set()
     for r in results:
-        if r.get("tool") == "query_events" and "count" in r and not r.get("error"):
-            label = "matching events"
-            if r.get("resolved_player"):
-                label = f"{r['resolved_player']} events"
-            cited.append(
-                CitedStat(label=label, value=str(r["count"]), source="query_events")
-            )
+        if r.get("error"):
+            continue
+        extractor = _EXTRACTORS.get(r.get("tool"))
+        if extractor is None:
+            continue
+        v, c = extractor(r)
+        for url in v:
+            if url and url not in seen_visuals:
+                seen_visuals.add(url)
+                visuals.append(url)
+        cited += c
 
     answer = AgentAnswer(
         answer_text=state.get("draft", "").strip(),
@@ -155,6 +155,104 @@ def answer_node(state: AgentState) -> AgentState:
         cited_stats=cited,
     )
     return {"answer": answer}
+
+
+# --- per-tool extractors --------------------------------------------------
+# Each function turns one tool-result dict into (visuals_to_append, cited_stats).
+# Keep them small and pure — answer_node does the de-duping and assembly.
+
+
+def _extract_shot_map(r: dict[str, Any]) -> tuple[list[str], list[CitedStat]]:
+    visuals = [r["image_url"]] if r.get("image_url") else []
+    cited: list[CitedStat] = []
+    stats = r.get("stats") or {}
+    player = r.get("player", "player")
+    if stats:
+        cited += [
+            CitedStat(label=f"{player} shots", value=str(stats["shots"]), source="shot_map"),
+            CitedStat(label=f"{player} goals", value=str(stats["goals"]), source="shot_map"),
+            CitedStat(label=f"{player} xG", value=f"{stats['xg']:.2f}", source="shot_map"),
+        ]
+    return visuals, cited
+
+
+def _extract_query_events(r: dict[str, Any]) -> tuple[list[str], list[CitedStat]]:
+    if "count" not in r:
+        return [], []
+    label = f"{r['resolved_player']} events" if r.get("resolved_player") else "matching events"
+    return [], [CitedStat(label=label, value=str(r["count"]), source="query_events")]
+
+
+def _extract_pass_network(r: dict[str, Any]) -> tuple[list[str], list[CitedStat]]:
+    visuals = [r["image_url"]] if r.get("image_url") else []
+    cited: list[CitedStat] = []
+    team, opp = r.get("team"), r.get("opponent")
+    if team and opp:
+        match_label = f"{team} vs {opp}"
+        cited.append(CitedStat(
+            label=f"{match_label} completed passes",
+            value=str(r.get("passes_completed", 0)),
+            source="pass_network",
+        ))
+        top = (r.get("top_edges") or [])[:1]
+        if top:
+            t = top[0]
+            cited.append(CitedStat(
+                label=f"top pair: {t['a']} ↔ {t['b']}",
+                value=str(t["passes"]),
+                source="pass_network",
+            ))
+    return visuals, cited
+
+
+def _extract_compare_players(r: dict[str, Any]) -> tuple[list[str], list[CitedStat]]:
+    visuals = [r["image_url"]] if r.get("image_url") else []
+    cited: list[CitedStat] = []
+    a = r.get("player_a")
+    b = r.get("player_b")
+    if a and b:
+        ma = r.get("metrics_a", {})
+        mb = r.get("metrics_b", {})
+        for key in r.get("metrics", []):
+            if key not in ma or key not in mb:
+                continue
+            cited.append(CitedStat(
+                label=f"{a} {key}",
+                value=_fmt_metric(ma[key]),
+                source="compare_players",
+            ))
+            cited.append(CitedStat(
+                label=f"{b} {key}",
+                value=_fmt_metric(mb[key]),
+                source="compare_players",
+            ))
+    return visuals, cited
+
+
+def _extract_tactics_lookup(r: dict[str, Any]) -> tuple[list[str], list[CitedStat]]:
+    cited: list[CitedStat] = []
+    for h in r.get("hits", [])[:3]:
+        cited.append(CitedStat(
+            label=f"tactics_kb: {h['source']}",
+            value=f"score {h['score']:.2f}",
+            source="tactics_lookup",
+        ))
+    return [], cited
+
+
+def _fmt_metric(v: float | int) -> str:
+    """Compact metric formatter: integers stay integers, decimals get 2dp."""
+    fv = float(v)
+    return str(int(fv)) if fv.is_integer() else f"{fv:.2f}"
+
+
+_EXTRACTORS = {
+    "shot_map": _extract_shot_map,
+    "query_events": _extract_query_events,
+    "pass_network": _extract_pass_network,
+    "compare_players": _extract_compare_players,
+    "tactics_lookup": _extract_tactics_lookup,
+}
 
 
 # --- routing --------------------------------------------------------------
@@ -166,12 +264,34 @@ def _after_plan(state: AgentState) -> str:
 
 
 def _tool_content_for_llm(result: dict[str, Any]) -> dict[str, Any]:
-    """Trim large arrays before feeding a tool result back to the model."""
+    """Trim large arrays before feeding a tool result back to the model.
+
+    Big tool payloads (per-shot markers, pass-network nodes/edges, RAG text)
+    blow up the LLM context with little marginal benefit — the model only needs
+    the headlines to write the answer.
+    """
     trimmed = dict(result)
     shots = trimmed.get("shots")
     if isinstance(shots, list) and len(shots) > 25:
         trimmed["shots"] = shots[:25]
         trimmed["shots_truncated"] = f"showing 25 of {len(shots)}"
+    # pass_network: drop full nodes list (we keep summary stats + top edges).
+    if trimmed.get("tool") == "pass_network":
+        nodes = trimmed.get("nodes")
+        if isinstance(nodes, list) and len(nodes) > 0:
+            trimmed["nodes_count"] = len(nodes)
+            trimmed["nodes"] = [n["player"] for n in nodes]  # just names
+        edges = trimmed.get("top_edges")
+        if isinstance(edges, list) and len(edges) > 6:
+            trimmed["top_edges"] = edges[:6]
+    # tactics_lookup: keep the text (model needs to reason over it) but cap
+    # length so a future longer note can't dominate the prompt.
+    if trimmed.get("tool") == "tactics_lookup":
+        capped: list[dict[str, Any]] = []
+        for h in trimmed.get("hits", [])[:4]:
+            text = h.get("text", "")
+            capped.append({**h, "text": text[:900]})
+        trimmed["hits"] = capped
     return trimmed
 
 

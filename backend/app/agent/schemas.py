@@ -64,6 +64,65 @@ class ShotMapArgs(BaseModel):
     )
 
 
+class PassNetworkArgs(BaseModel):
+    """Args for ``pass_network`` — one team's completed-pass graph in one match.
+
+    The model can pick the match either by an ``opponent`` (we resolve to a real
+    ``match_id`` from the data) or by an explicit ``match_id`` if it knows one.
+    Exactly one of those is required; ``team`` is always required.
+    """
+
+    team: str = Field(
+        ..., description="Team name whose pass network to render, e.g. 'France'."
+    )
+    opponent: str | None = Field(
+        default=None,
+        description="Opponent team name to disambiguate the match, e.g. 'Argentina'.",
+    )
+    match_id: int | None = Field(
+        default=None,
+        description="StatsBomb match id. Use this OR ``opponent``; not both required.",
+    )
+    until_minute: int | None = Field(
+        default=60,
+        ge=1,
+        le=120,
+        description=(
+            "Build the network from completed passes up to this minute (default 60). "
+            "Stopping before mass substitutions keeps avg player positions meaningful."
+        ),
+    )
+
+
+class ComparePlayersArgs(BaseModel):
+    """Args for ``compare_players`` — radar of two players over the whole tournament."""
+
+    player_a: str = Field(..., description="First player name (short ok, e.g. 'Mbappé').")
+    player_b: str = Field(..., description="Second player name (short ok, e.g. 'Messi').")
+    metrics: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional subset of metric keys to compare. Available: shots, goals, xg, "
+            "key_passes, assists, progressive_passes, passes_completed. Default uses "
+            "shots, goals, xg, key_passes, assists, progressive_passes."
+        ),
+    )
+
+
+class TacticsLookupArgs(BaseModel):
+    """Args for ``tactics_lookup`` — semantic RAG over ``tactics_kb/``."""
+
+    query: str = Field(
+        ...,
+        description=(
+            "Natural-language question or concept to look up, e.g. 'what is a low block?'."
+        ),
+    )
+    top_k: int = Field(
+        default=3, ge=1, le=8, description="Max chunks to return (1-8)."
+    )
+
+
 class CitedStat(BaseModel):
     """A single number the answer references, tagged with the tool that produced it."""
 

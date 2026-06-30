@@ -210,3 +210,129 @@ def list_players(con: duckdb.DuckDBPyConnection, team: str | None = None) -> lis
             f"SELECT DISTINCT player FROM {_VIEW} WHERE player IS NOT NULL ORDER BY player"
         ).fetchall()
     return [r[0] for r in rows]
+
+
+# --- M4 helpers: passes for pass_network, match resolution, player metrics ---
+
+
+def list_matches(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+    """Return one row per match with ``match_id`` and the two teams sorted alphabetically.
+
+    Used by the agent's pass_network tool to resolve a natural-language match
+    ("France vs Argentina") to a real ``match_id``.
+    """
+    return con.execute(
+        f"""
+        SELECT match_id,
+               MIN(team) AS team_a,
+               MAX(team) AS team_b
+        FROM {_VIEW}
+        WHERE team IS NOT NULL
+        GROUP BY match_id
+        HAVING COUNT(DISTINCT team) = 2
+        ORDER BY match_id
+        """
+    ).df()
+
+
+def find_match(
+    con: duckdb.DuckDBPyConnection,
+    team: str,
+    opponent: str | None = None,
+) -> dict | None:
+    """Resolve a ``(team, opponent)`` pair to one match row.
+
+    Names are compared case-insensitively. With ``opponent`` set the lookup is
+    exact; without it, returns the most recent match the team played (max
+    ``match_id``) so a bare team name still works. Returns ``None`` if nothing
+    matches; raises ``ValueError`` if ``team`` + ``opponent`` is ambiguous (would
+    only happen if two teams meet twice, which the WC group/knockout split
+    avoids).
+    """
+    matches = list_matches(con)
+    tlow = team.lower()
+    a, b = matches["team_a"].str.lower(), matches["team_b"].str.lower()
+    mask = (a == tlow) | (b == tlow)
+    if opponent is not None:
+        olow = opponent.lower()
+        mask &= (a == olow) | (b == olow)
+    hit = matches[mask]
+    if hit.empty:
+        return None
+    if opponent is not None and len(hit) > 1:
+        raise ValueError(
+            f"Multiple matches for {team} vs {opponent}: {hit['match_id'].tolist()}"
+        )
+    row = hit.iloc[-1]  # most recent if opponent omitted
+    teams = [row["team_a"], row["team_b"]]
+    # Put the requested team first for nicer downstream labels.
+    if teams[0].lower() != tlow:
+        teams = [teams[1], teams[0]]
+    return {"match_id": int(row["match_id"]), "team": teams[0], "opponent": teams[1]}
+
+
+def team_match_passes(
+    con: duckdb.DuckDBPyConnection,
+    team: str,
+    match_id: int,
+) -> pd.DataFrame:
+    """Completed passes for ``team`` in ``match_id`` — the rows the pass network needs.
+
+    Filters to ``type='Pass'`` with a NULL ``pass_outcome`` (StatsBomb convention
+    for "completed"); excludes shootout period 5. Returns one row per pass with
+    ``passer``, ``recipient``, start ``[x,y]``, end ``[x,y]``, ``minute``.
+    """
+    df = con.execute(
+        f"""
+        SELECT player AS passer,
+               pass_recipient AS recipient,
+               location,
+               pass_end_location,
+               minute,
+               period
+        FROM {_VIEW}
+        WHERE type = 'Pass'
+          AND pass_outcome IS NULL
+          AND pass_recipient IS NOT NULL
+          AND team = ?
+          AND match_id = ?
+          AND period <> {_SHOOTOUT_PERIOD}
+        """,
+        [team, match_id],
+    ).df()
+    return df
+
+
+def player_metrics(con: duckdb.DuckDBPyConnection, player: str) -> dict:
+    """Aggregate per-player metrics across the loaded competition.
+
+    Returns the small set of figures the ``compare_players`` tool needs:
+
+    - ``shots``: total shot events (excludes shootouts).
+    - ``goals``: shots with outcome 'Goal'.
+    - ``xg``: total StatsBomb xG over those shots.
+    - ``passes_completed``: completed passes (``pass_outcome`` NULL).
+    - ``key_passes``: completed passes flagged ``pass_shot_assist``.
+    - ``assists``: completed passes flagged ``pass_goal_assist``.
+    - ``progressive_passes``: completed passes whose end_x is >=10 yards
+      closer to the opponent goal line (x=120) than the start.
+    """
+    row = con.execute(
+        f"""
+        SELECT
+            SUM(CASE WHEN type='Shot' AND period<>{_SHOOTOUT_PERIOD} THEN 1 ELSE 0 END) AS shots,
+            SUM(CASE WHEN type='Shot' AND shot_outcome='Goal' AND period<>{_SHOOTOUT_PERIOD} THEN 1 ELSE 0 END) AS goals,
+            COALESCE(SUM(CASE WHEN type='Shot' AND period<>{_SHOOTOUT_PERIOD}
+                              THEN shot_statsbomb_xg END), 0) AS xg,
+            SUM(CASE WHEN type='Pass' AND pass_outcome IS NULL THEN 1 ELSE 0 END) AS passes_completed,
+            SUM(CASE WHEN type='Pass' AND pass_outcome IS NULL AND pass_shot_assist=TRUE THEN 1 ELSE 0 END) AS key_passes,
+            SUM(CASE WHEN type='Pass' AND pass_outcome IS NULL AND pass_goal_assist=TRUE THEN 1 ELSE 0 END) AS assists,
+            SUM(CASE WHEN type='Pass' AND pass_outcome IS NULL
+                          AND (pass_end_location[1] - location[1]) >= 10 THEN 1 ELSE 0 END) AS progressive_passes
+        FROM {_VIEW}
+        WHERE player = ?
+        """,
+        [player],
+    ).fetchone()
+    cols = ["shots","goals","xg","passes_completed","key_passes","assists","progressive_passes"]
+    return {c: (float(v) if c == "xg" else int(v or 0)) for c, v in zip(cols, row)}

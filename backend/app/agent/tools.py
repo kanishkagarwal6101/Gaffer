@@ -11,7 +11,9 @@ Each tool returns a plain JSON-serialisable ``dict`` (the agent feeds it back to
 the LLM and threads the structured pieces into the final answer). ``TOOL_SPECS``
 advertises the tools to the model; ``dispatch`` runs one by name.
 
-``pass_network``, ``compare_players`` and ``tactics_lookup`` arrive in M4.
+All five M3/M4 tools (``query_events``, ``shot_map``, ``pass_network``,
+``compare_players``, ``tactics_lookup``) are wired through ``TOOL_SPECS``
+and ``dispatch`` below.
 """
 
 from __future__ import annotations
@@ -23,7 +25,14 @@ from typing import Any
 
 from ..data import store
 from ..viz import pitch
-from .schemas import QueryEventsArgs, ShotMapArgs
+from .schemas import (
+    ComparePlayersArgs,
+    PassNetworkArgs,
+    QueryEventsArgs,
+    ShotMapArgs,
+    TacticsLookupArgs,
+)
+from . import rag
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +201,171 @@ def shot_map(player: str) -> dict[str, Any]:
     }
 
 
+
+# --- M4 tools ---------------------------------------------------------------
+
+
+# Metric keys exposed to ``compare_players`` (everything ``store.player_metrics``
+# returns). The default set excludes ``passes_completed`` so the radar stays
+# focused on attacking output; the agent can override via ``metrics=``.
+_AVAILABLE_METRICS = [
+    "shots", "goals", "xg", "key_passes", "assists",
+    "progressive_passes", "passes_completed",
+]
+_DEFAULT_METRICS = [
+    "shots", "goals", "xg", "key_passes", "assists", "progressive_passes",
+]
+
+
+def _resolve_team(name: str, con) -> str | None:
+    """Map a possibly-shortened team name to a real team in the data (accent/case-insensitive)."""
+    teams = store.list_teams(con)
+    folded = {_fold(t): t for t in teams}
+    key = _fold(name)
+    if key in folded:
+        return folded[key]
+    hits = [t for t in teams if key in _fold(t)]
+    return hits[0] if len(hits) == 1 else None
+
+
+def pass_network(
+    team: str,
+    opponent: str | None = None,
+    match_id: int | None = None,
+    until_minute: int | None = 60,
+) -> dict[str, Any]:
+    """Render a team's completed-pass network for one match.
+
+    Resolves ``team`` (and the optional ``opponent``) to a concrete match in the
+    loaded competition, fetches the completed passes from the store, renders the
+    network PNG, and returns the resolved match metadata plus a top-edges
+    summary the agent can cite.
+    """
+    args = PassNetworkArgs(
+        team=team, opponent=opponent, match_id=match_id, until_minute=until_minute
+    )
+    con = store.get_con()
+    try:
+        resolved_team = _resolve_team(args.team, con) or args.team
+        resolved_opp = _resolve_team(args.opponent, con) if args.opponent else None
+
+        if args.match_id is not None:
+            # Verify the team played in that match; pull the other side as opponent.
+            matches = store.list_matches(con)
+            row = matches[matches["match_id"] == args.match_id]
+            if row.empty:
+                return {"tool": "pass_network",
+                        "error": f"No match with match_id={args.match_id}."}
+            a, b = row.iloc[0]["team_a"], row.iloc[0]["team_b"]
+            if resolved_team not in (a, b):
+                return {"tool": "pass_network",
+                        "error": f"{resolved_team} did not play in match {args.match_id} ({a} vs {b})."}
+            opp = b if resolved_team == a else a
+            match = {"match_id": int(args.match_id), "team": resolved_team, "opponent": opp}
+        else:
+            match = store.find_match(con, resolved_team, resolved_opp)
+            if match is None:
+                hint = f"{resolved_team} vs {resolved_opp}" if resolved_opp else resolved_team
+                return {"tool": "pass_network",
+                        "error": f"No match found for {hint} in the loaded competition."}
+
+        passes = store.team_match_passes(con, match["team"], match["match_id"])
+    finally:
+        con.close()
+
+    total_passes = int(len(passes))
+    title = f"{match['team']} vs {match['opponent']} — pass network"
+    image_url: str | None = None
+    nodes: list[dict[str, Any]] = []
+    top_edges: list[dict[str, Any]] = []
+    try:
+        result = pitch.render_pass_network(passes, title=title, until_minute=args.until_minute)
+        image_url = _static_url(result["path"])
+        nodes = result["nodes"]
+        top_edges = result["edges"]
+    except Exception as exc:  # rendering is best-effort
+        logger.warning("pass_network render failed for %s: %s", title, exc)
+
+    return {
+        "tool": "pass_network",
+        "team": match["team"],
+        "opponent": match["opponent"],
+        "match_id": match["match_id"],
+        "until_minute": args.until_minute,
+        "passes_completed": total_passes,
+        "nodes": nodes,
+        "top_edges": top_edges,
+        "image_url": image_url,
+    }
+
+
+def compare_players(
+    player_a: str,
+    player_b: str,
+    metrics: list[str] | None = None,
+) -> dict[str, Any]:
+    """Compare two players' tournament metrics and render a radar.
+
+    Returns both the raw per-player numbers and a PNG URL of the radar chart.
+    """
+    args = ComparePlayersArgs(player_a=player_a, player_b=player_b, metrics=metrics)
+    con = store.get_con()
+    try:
+        a = _resolve_player(args.player_a, con)
+        b = _resolve_player(args.player_b, con)
+        if a is None or b is None:
+            missing = []
+            if a is None: missing.append(args.player_a)
+            if b is None: missing.append(args.player_b)
+            return {"tool": "compare_players",
+                    "error": f"No player matching: {', '.join(missing)}."}
+        m_a = store.player_metrics(con, a)
+        m_b = store.player_metrics(con, b)
+    finally:
+        con.close()
+
+    requested = args.metrics or _DEFAULT_METRICS
+    keys = [k for k in requested if k in _AVAILABLE_METRICS]
+    if not keys:
+        return {"tool": "compare_players",
+                "error": f"No valid metrics in {requested}; available: {_AVAILABLE_METRICS}."}
+
+    metrics_a = {k: round(float(m_a[k]), 2) for k in keys}
+    metrics_b = {k: round(float(m_b[k]), 2) for k in keys}
+
+    image_url: str | None = None
+    try:
+        title = f"{pitch.short_name(a)} vs {pitch.short_name(b)} — WC22"
+        path = pitch.render_player_radar(a, metrics_a, b, metrics_b, title=title)
+        image_url = _static_url(path)
+    except Exception as exc:
+        logger.warning("compare_players radar failed for %s vs %s: %s", a, b, exc)
+
+    return {
+        "tool": "compare_players",
+        "player_a": a,
+        "player_b": b,
+        "metrics": keys,
+        "metrics_a": metrics_a,
+        "metrics_b": metrics_b,
+        "image_url": image_url,
+    }
+
+
+def tactics_lookup(query: str, top_k: int = 3) -> dict[str, Any]:
+    """Semantic RAG over ``tactics_kb/`` — returns the top-k matching chunks."""
+    args = TacticsLookupArgs(query=query, top_k=top_k)
+    hits = rag.retrieve(args.query, top_k=args.top_k)
+    return {
+        "tool": "tactics_lookup",
+        "query": args.query,
+        "hits": [
+            {"source": h["source"], "score": h["score"], "text": h["text"]}
+            for h in hits
+        ],
+    }
+
+
 def _static_url(fs_path: str) -> str:
     """Convert a rendered file path under app/static/ to its served URL."""
     p = Path(fs_path)
@@ -247,11 +421,83 @@ TOOL_SPECS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "pass_network",
+            "description": (
+                "Render a team's completed-pass network for one match — nodes are "
+                "players placed at their average pass location, edges weighted by "
+                "the number of completed passes between them. Use this when the user "
+                "asks about a team's build-up, structure, or how they connected in a "
+                "specific match. Provide either ``opponent`` (e.g. 'Argentina') or "
+                "``match_id``; ``team`` is always required."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team whose network to render, e.g. 'France'."},
+                    "opponent": {"type": "string", "description": "Opponent team in that match, e.g. 'Argentina'."},
+                    "match_id": {"type": "integer", "description": "StatsBomb match id (alternative to opponent)."},
+                    "until_minute": {"type": "integer", "description": "Cap the window at this minute (default 60).", "default": 60},
+                },
+                "required": ["team"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "compare_players",
+            "description": (
+                "Compare two players over the loaded tournament: aggregates shots, "
+                "goals, xG, key passes, assists, progressive passes and returns a "
+                "radar chart PNG plus the raw per-player numbers. Use this when the "
+                "user asks 'compare X and Y' or 'who was better at ...'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "player_a": {"type": "string", "description": "First player name (short ok, e.g. 'Mbappé')."},
+                    "player_b": {"type": "string", "description": "Second player name (short ok, e.g. 'Messi')."},
+                    "metrics": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional subset of: shots, goals, xg, key_passes, assists, progressive_passes, passes_completed.",
+                    },
+                },
+                "required": ["player_a", "player_b"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "tactics_lookup",
+            "description": (
+                "Look up a tactical concept (low block, high press, overload, xG, "
+                "pass network) from the local tactics knowledge base. Use this when "
+                "the user asks 'what is X?' or wants to ground reasoning in a "
+                "tactical definition. Returns short text chunks; cite them by source."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The question or concept to look up."},
+                    "top_k": {"type": "integer", "description": "Max chunks (1-8, default 3).", "default": 3},
+                },
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
 _REGISTRY = {
     "query_events": query_events,
     "shot_map": shot_map,
+    "pass_network": pass_network,
+    "compare_players": compare_players,
+    "tactics_lookup": tactics_lookup,
 }
 
 
