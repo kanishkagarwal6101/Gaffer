@@ -89,6 +89,13 @@ cd backend
 uv run python -m scripts.gen_shotmap
 ```
 
+**Render a player's shot map** (mplsoccer PNG to `app/static/shot_maps/`, plus summary stats — shots, xG, goals, over/under-performance):
+
+```bash
+cd backend
+uv run python -m scripts.test_shot_map "Lionel Andrés Messi Cuccittini"
+```
+
 ---
 
 ## Configuration
@@ -110,7 +117,7 @@ No StatsBomb credentials are needed for open data. Never commit `.env`.
 |---|---|---|
 | M0 | Scaffold repo + envs | done |
 | M1 | Data pipeline: StatsBomb → Parquet → DuckDB, sanity gate | done |
-| M2 | `shot_map` tool end-to-end (data → viz) | in progress |
+| M2 | `shot_map` tool end-to-end (data → viz) | done |
 | M3 | Agent loop: LangGraph + LiteLLM, one grounded text+viz answer | |
 | M4 | `pass_network`, `compare_players`, `tactics_lookup` (RAG) | |
 | M5 | Grounding check + structured final output | |

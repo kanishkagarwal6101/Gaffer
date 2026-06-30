@@ -49,7 +49,7 @@ def get_con(parquet_path: Path = EVENTS_PARQUET, auto_ingest: bool = True) -> du
 
 
 def _columns(con: duckdb.DuckDBPyConnection) -> set[str]:
-    return {row[0] for row in con.execute(f"PRAGMA table_info('{_VIEW}')").fetchall()}
+    return {row[1] for row in con.execute(f"PRAGMA table_info('{_VIEW}')").fetchall()}
 
 
 def top_scorers(
@@ -121,12 +121,54 @@ def query_events(
 def player_shots(con: duckdb.DuckDBPyConnection, player: str) -> pd.DataFrame:
     """Return all shot events for a player, with xG and outcome."""
     cols = _columns(con)
-    select = ["player", "team", "type", "shot_outcome", "shot_statsbomb_xg", "location", "match_id"]
+    select = [
+        "player", "team", "type", "shot_outcome", "shot_statsbomb_xg",
+        "location", "match_id", "period",
+    ]
     select = [c for c in select if c in cols]
     return con.execute(
         f"SELECT {', '.join(select)} FROM {_VIEW} WHERE type = 'Shot' AND player = ?",
         [player],
     ).df()
+
+
+def get_player_shots(player_name: str, include_shootouts: bool = False) -> pd.DataFrame:
+    """Return one player's shots for the loaded competition, ready for plotting.
+
+    Self-contained convenience wrapper around the structured ``player_shots``
+    helper (no free-form SQL): opens its own connection, splits the StatsBomb
+    ``location`` ``[x, y]`` into numeric ``x``/``y`` columns, and derives a
+    boolean ``is_goal``. Penalty-shootout attempts (period 5) are excluded by
+    default so totals match run-of-play tallies.
+
+    Returns a DataFrame with columns ``x``, ``y``, ``shot_statsbomb_xg``,
+    ``is_goal`` (empty with those columns if the player has no shots).
+    """
+    empty = pd.DataFrame(columns=["x", "y", "shot_statsbomb_xg", "is_goal"])
+    con = get_con()
+    try:
+        df = player_shots(con, player_name)
+    finally:
+        con.close()
+
+    if df.empty:
+        return empty
+
+    if not include_shootouts and "period" in df.columns:
+        df = df[df["period"] != _SHOOTOUT_PERIOD]
+    if df.empty:
+        return empty
+
+    locs = df["location"].apply(lambda loc: (None, None) if loc is None else (loc[0], loc[1]))
+    out = pd.DataFrame(
+        {
+            "x": [pt[0] for pt in locs],
+            "y": [pt[1] for pt in locs],
+            "shot_statsbomb_xg": df["shot_statsbomb_xg"].astype(float).fillna(0.0).to_numpy(),
+            "is_goal": (df["shot_outcome"] == "Goal").to_numpy(),
+        }
+    )
+    return out.dropna(subset=["x", "y"]).reset_index(drop=True)
 
 
 def list_teams(con: duckdb.DuckDBPyConnection) -> list[str]:

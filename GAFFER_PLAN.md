@@ -139,17 +139,17 @@ gaffer/
 
 ## 8. Milestone plan (each milestone = one focused session)
 
-| # | Goal | Tool |
-|---|---|---|
-| **M0** | Scaffold repo + envs (`uv` backend, React + Vite frontend), `.env.example`, run `/init` for CLAUDE.md | Cursor |
-| **M1** | Data pipeline: pull & cache one competition's events to Parquet; DuckDB view; pass the sanity gate | Cursor + **[CC]** for ingest logic |
-| **M2** | One tool end-to-end: `shot_map` for a chosen player → correct xG → rendered PNG. Proves data→viz path | **[CC]** |
-| **M3** | The agent loop: wire LangGraph + LiteLLM(Gemini), expose `query_events` + `shot_map`, get one grounded text+viz answer | **[CC]** |
-| **M4** | Add `pass_network`, `compare_players`, and `tactics_lookup` (Chroma RAG) | Cursor + **[CC]** |
-| **M5** | Grounding check + structured final output | **[CC]** |
-| **M6** | FastAPI `/chat` endpoint + static viz serving | Cursor |
-| **M7** | React/Vite chat UI rendering answers + visuals | Cursor |
-| **M8** | Polish, deploy (Vercel + free backend host), README with a demo GIF | Cursor |
+| # | Goal | Tool | Status |
+|---|---|---|---|
+| **M0** | Scaffold repo + envs (`uv` backend, React + Vite frontend), `.env.example`, run `/init` for CLAUDE.md | Cursor | done |
+| **M1** | Data pipeline: pull & cache one competition's events to Parquet; DuckDB view; pass the sanity gate | Cursor + **[CC]** for ingest logic | done |
+| **M2** | One tool end-to-end: `shot_map` for a chosen player → correct xG → rendered PNG. Proves data→viz path | **[CC]** | done |
+| **M3** | The agent loop: wire LangGraph + LiteLLM(Gemini), expose `query_events` + `shot_map`, get one grounded text+viz answer | **[CC]** |  |
+| **M4** | Add `pass_network`, `compare_players`, and `tactics_lookup` (Chroma RAG) | Cursor + **[CC]** |  |
+| **M5** | Grounding check + structured final output | **[CC]** |  |
+| **M6** | FastAPI `/chat` endpoint + static viz serving | Cursor |  |
+| **M7** | React/Vite chat UI rendering answers + visuals | Cursor |  |
+| **M8** | Polish, deploy (Vercel + free backend host), README with a demo GIF | Cursor |  |
 
 Ship M1–M3 first and you already have a demoable thing. M4–M8 make it portfolio-grade.
 

@@ -12,6 +12,9 @@ __pycache__/
 # Data cache (StatsBomb parquet, generated locally — see plan section 4)
 data_cache/
 
+# Generated viz (mplsoccer shot-map PNGs — rendered on demand)
+backend/app/static/
+
 # Node / Next.js
 node_modules/
 .next/
