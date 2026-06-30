@@ -98,6 +98,18 @@ def query_events(
     All filters are optional and combined with AND. This is the fixed-interface
     query layer the agent's ``query_events`` tool builds on (no free-form SQL).
     """
+    where, params = _event_filters(player, team, event_type, match_id)
+    params.append(limit)
+    return con.execute(f"SELECT * FROM {_VIEW} {where} LIMIT ?", params).df()
+
+
+def _event_filters(
+    player: str | None,
+    team: str | None,
+    event_type: str | None,
+    match_id: int | None,
+) -> tuple[str, list[object]]:
+    """Build a parameterized WHERE clause shared by query_events/count_events."""
     clauses: list[str] = []
     params: list[object] = []
     if player is not None:
@@ -112,10 +124,20 @@ def query_events(
     if match_id is not None:
         clauses.append("match_id = ?")
         params.append(match_id)
-
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    params.append(limit)
-    return con.execute(f"SELECT * FROM {_VIEW} {where} LIMIT ?", params).df()
+    return where, params
+
+
+def count_events(
+    con: duckdb.DuckDBPyConnection,
+    player: str | None = None,
+    team: str | None = None,
+    event_type: str | None = None,
+    match_id: int | None = None,
+) -> int:
+    """True total of events matching the filters (independent of any row limit)."""
+    where, params = _event_filters(player, team, event_type, match_id)
+    return int(con.execute(f"SELECT COUNT(*) FROM {_VIEW} {where}", params).fetchone()[0])
 
 
 def player_shots(con: duckdb.DuckDBPyConnection, player: str) -> pd.DataFrame:

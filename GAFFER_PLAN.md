@@ -144,7 +144,7 @@ gaffer/
 | **M0** | Scaffold repo + envs (`uv` backend, React + Vite frontend), `.env.example`, run `/init` for CLAUDE.md | Cursor | done |
 | **M1** | Data pipeline: pull & cache one competition's events to Parquet; DuckDB view; pass the sanity gate | Cursor + **[CC]** for ingest logic | done |
 | **M2** | One tool end-to-end: `shot_map` for a chosen player → correct xG → rendered PNG. Proves data→viz path | **[CC]** | done |
-| **M3** | The agent loop: wire LangGraph + LiteLLM(Gemini), expose `query_events` + `shot_map`, get one grounded text+viz answer | **[CC]** |  |
+| **M3** | The agent loop: wire LangGraph + LiteLLM(Gemini), expose `query_events` + `shot_map`, get one grounded text+viz answer | **[CC]** | done |
 | **M4** | Add `pass_network`, `compare_players`, and `tactics_lookup` (Chroma RAG) | Cursor + **[CC]** |  |
 | **M5** | Grounding check + structured final output | **[CC]** |  |
 | **M6** | FastAPI `/chat` endpoint + static viz serving | Cursor |  |
