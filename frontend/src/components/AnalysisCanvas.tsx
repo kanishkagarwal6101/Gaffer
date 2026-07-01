@@ -1,9 +1,11 @@
 import {
+  COMPETITION,
   EXAMPLE_PROMPTS,
   MATCH,
   STATS,
   type ShotMarker,
 } from "../data";
+import { extractCanvasStats, type CitedStat } from "../api";
 import Pitch from "./Pitch";
 
 const SCORE = `${MATCH.home.goals}–${MATCH.away.goals}`;
@@ -16,12 +18,9 @@ interface AnalysisCanvasProps {
   shots: ShotMarker[];
   annotate: boolean;
   onExample: (text: string) => void;
-  /**
-   * Placeholder hook for later milestones (M2+): when the backend returns a
-   * rendered mplsoccer shot-map PNG, pass its URL here and it renders in the
-   * canvas in place of the mock SVG pitch. Null until the backend is wired up.
-   */
   imageSrc?: string | null;
+  citedStats?: CitedStat[];
+  canvasTitle?: string | null;
 }
 
 function ThinkingOverlay() {
@@ -53,12 +52,59 @@ function ThinkingOverlay() {
   );
 }
 
+function StatPill({ citedStats }: { citedStats: CitedStat[] }) {
+  const live = extractCanvasStats(citedStats);
+  const hasLive = live.xg || live.shots || live.goals;
+
+  if (!hasLive) return null;
+
+  return (
+    <div className="flex flex-none items-center whitespace-nowrap rounded-[8px] border border-line bg-panel px-[15px] py-[9px] font-mono text-[13.5px] tracking-[.02em]">
+      {live.xg && (
+        <>
+          <span className="text-muted">xG </span>
+          <span className="font-semibold text-accent">{live.xg}</span>
+        </>
+      )}
+      {live.shots && (
+        <>
+          <span className="text-faint">&nbsp;·&nbsp;</span>
+          <span className="text-muted">SHOTS </span>
+          <span className="font-semibold text-fg">{live.shots}</span>
+        </>
+      )}
+      {live.goals && (
+        <>
+          <span className="text-faint">&nbsp;·&nbsp;</span>
+          <span className="text-muted">GOALS </span>
+          <span className="font-semibold text-accent">{live.goals}</span>
+        </>
+      )}
+      {live.vsXg && (
+        <>
+          <span className="text-faint">&nbsp;·&nbsp;</span>
+          <span className="font-semibold text-accent">{live.vsXg}</span>
+          <span className="text-muted"> vs xG</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ShotMapView({
   thinking,
   shots,
   annotate,
   imageSrc,
-}: Pick<AnalysisCanvasProps, "thinking" | "shots" | "annotate" | "imageSrc">) {
+  citedStats = [],
+  canvasTitle,
+}: Pick<
+  AnalysisCanvasProps,
+  "thinking" | "shots" | "annotate" | "imageSrc" | "citedStats" | "canvasTitle"
+>) {
+  const useLive = citedStats.length > 0;
+  const headline = canvasTitle ?? `${MATCH.home.team} ${SCORE} ${MATCH.away.team}`;
+
   return (
     <div
       data-screen-label="Analysis canvas"
@@ -67,12 +113,10 @@ function ShotMapView({
       <div className="flex flex-none items-start justify-between gap-5">
         <div>
           <div className="mb-2 font-mono text-[10.5px] tracking-[.16em] text-muted">
-            SHOT MAP · WC FINAL · ATTACKING →
+            SHOT MAP · {COMPETITION.toUpperCase()} · ATTACKING →
           </div>
           <div className="font-display text-[22px] font-semibold tracking-[-.01em] text-fg">
-            {MATCH.home.team}{" "}
-            <span className="font-medium text-muted">{SCORE}</span>{" "}
-            {MATCH.away.team}
+            {headline}
           </div>
         </div>
         <div className="flex flex-none overflow-hidden rounded-[8px] border border-line font-mono text-[11px]">
@@ -90,11 +134,10 @@ function ShotMapView({
 
       <div className="relative flex min-h-0 flex-1 items-center justify-center py-5">
         {imageSrc ? (
-          // Backend shot-map PNG renders here once available (see imageSrc above).
           <img
             src={imageSrc}
             alt="Shot map"
-            style={{ width: "100%", maxWidth: 800, height: "auto", maxHeight: "100%" }}
+            className="max-h-full w-full max-w-[900px] object-contain"
           />
         ) : (
           <Pitch shots={shots} annotate={annotate} />
@@ -116,27 +159,33 @@ function ShotMapView({
             </svg>
             MISS / SAVED
           </span>
-          <span className="flex items-center gap-[7px]">
-            <svg width="12" height="12">
-              <circle cx="6" cy="6" r="5" fill="#E8A13A" fillOpacity=".82" />
-            </svg>
-            {MATCH.opponent.toUpperCase()}
-          </span>
+          {!useLive && (
+            <span className="flex items-center gap-[7px]">
+              <svg width="12" height="12">
+                <circle cx="6" cy="6" r="5" fill="#E8A13A" fillOpacity=".82" />
+              </svg>
+              {MATCH.opponent.toUpperCase()}
+            </span>
+          )}
           <span className="text-dim">◦ MARKER SIZE = xG</span>
         </div>
-        <div className="flex flex-none items-center whitespace-nowrap rounded-[8px] border border-line bg-panel px-[15px] py-[9px] font-mono text-[13.5px] tracking-[.02em]">
-          <span className="text-muted">xG </span>
-          <span className="font-semibold text-accent">{STATS.xg.toFixed(2)}</span>
-          <span className="text-faint">&nbsp;·&nbsp;</span>
-          <span className="text-muted">SHOTS </span>
-          <span className="font-semibold text-fg">{STATS.shots}</span>
-          <span className="text-faint">&nbsp;·&nbsp;</span>
-          <span className="text-muted">GOALS </span>
-          <span className="font-semibold text-accent">{STATS.goals}</span>
-          <span className="text-faint">&nbsp;·&nbsp;</span>
-          <span className="font-semibold text-accent">{VS_XG}</span>
-          <span className="text-muted"> vs xG</span>
-        </div>
+        {useLive ? (
+          <StatPill citedStats={citedStats} />
+        ) : (
+          <div className="flex flex-none items-center whitespace-nowrap rounded-[8px] border border-line bg-panel px-[15px] py-[9px] font-mono text-[13.5px] tracking-[.02em]">
+            <span className="text-muted">xG </span>
+            <span className="font-semibold text-accent">{STATS.xg.toFixed(2)}</span>
+            <span className="text-faint">&nbsp;·&nbsp;</span>
+            <span className="text-muted">SHOTS </span>
+            <span className="font-semibold text-fg">{STATS.shots}</span>
+            <span className="text-faint">&nbsp;·&nbsp;</span>
+            <span className="text-muted">GOALS </span>
+            <span className="font-semibold text-accent">{STATS.goals}</span>
+            <span className="text-faint">&nbsp;·&nbsp;</span>
+            <span className="font-semibold text-accent">{VS_XG}</span>
+            <span className="text-muted"> vs xG</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -197,6 +246,8 @@ export default function AnalysisCanvas({
   annotate,
   onExample,
   imageSrc = null,
+  citedStats = [],
+  canvasTitle = null,
 }: AnalysisCanvasProps) {
   return (
     <div className="relative flex min-w-0 flex-1 flex-col bg-ink">
@@ -206,6 +257,8 @@ export default function AnalysisCanvas({
           shots={shots}
           annotate={annotate}
           imageSrc={imageSrc}
+          citedStats={citedStats}
+          canvasTitle={canvasTitle}
         />
       )}
       {isEmpty && <LandingView onExample={onExample} />}

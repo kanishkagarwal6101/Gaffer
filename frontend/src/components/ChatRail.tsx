@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { STATS, TOP_CHANCE, type Message } from "../data";
 import MiniShotMap from "./MiniShotMap";
 
-// Real figures from the StatsBomb cache (see data.ts / gen_shotmap.py).
 const XG = STATS.xg.toFixed(2);
 const TOP_XG = TOP_CHANCE.xg.toFixed(2);
 const VS_XG = `${STATS.vsXg >= 0 ? "+" : ""}${STATS.vsXg.toFixed(2)}`;
@@ -46,6 +45,36 @@ function SpeakerLabel({ label, dot }: { label: string; dot: boolean }) {
       </span>
     </div>
   );
+}
+
+function GroundingBadge({
+  grounded,
+  corrected,
+}: {
+  grounded?: boolean;
+  corrected?: boolean;
+}) {
+  if (grounded === undefined) return null;
+  const label = corrected ? "corrected" : grounded ? "grounded" : "unverified";
+  const cls = grounded
+    ? "border-[rgba(52,211,153,.28)] bg-[rgba(52,211,153,.08)] text-accent"
+    : "border-line-hover bg-[rgba(138,150,144,.1)] text-muted";
+  return (
+    <span
+      className={`inline-flex items-center rounded-[4px] border px-[6px] py-[2px] font-mono text-[9px] uppercase tracking-[.14em] ${cls}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function statChipLabel(label: string): string {
+  const parts = label.split(" ");
+  const last = parts[parts.length - 1]?.toLowerCase() ?? label;
+  if (["shots", "goals", "xg", "passes", "assists"].includes(last)) {
+    return last === "xg" ? "xG" : last;
+  }
+  return label.length > 22 ? `${label.slice(0, 20)}…` : label;
 }
 
 function PrebakedConversation() {
@@ -160,8 +189,26 @@ export default function ChatRail({
             className="flex flex-col gap-[7px]"
             style={{ animation: "gfade .35s ease both" }}
           >
-            <SpeakerLabel label={m.label} dot={m.showDot} />
-            <div className="text-[13.5px] leading-[1.6] text-fg">{m.text}</div>
+            <div className="flex items-center gap-2">
+              <SpeakerLabel label={m.label} dot={m.showDot} />
+              {m.role === "gaffer" && (
+                <GroundingBadge grounded={m.grounded} corrected={m.corrected} />
+              )}
+            </div>
+            <div
+              className={`text-[13.5px] leading-[1.6] ${m.error ? "text-amber" : "text-fg"}`}
+            >
+              {m.text}
+            </div>
+            {m.citedStats && m.citedStats.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-0.5">
+                {m.citedStats.map((c, j) => (
+                  <Chip key={j} tone="green">
+                    {statChipLabel(c.label)} {c.value}
+                  </Chip>
+                ))}
+              </div>
+            )}
           </div>
         ))}
 
@@ -182,10 +229,12 @@ export default function ChatRail({
             }}
             placeholder="Ask Gaffer a tactical question…"
             className="min-w-0 flex-1 border-none bg-transparent font-body text-[13px] text-fg outline-none"
+            disabled={thinking}
           />
           <button
             onClick={onSend}
-            className="flex h-8 w-8 flex-none items-center justify-center rounded-[8px] border-none bg-accent text-base font-bold text-ink hover:bg-accent-hover"
+            disabled={thinking || !input.trim()}
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-[8px] border-none bg-accent text-base font-bold text-ink hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             ↑
           </button>

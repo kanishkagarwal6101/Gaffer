@@ -132,7 +132,13 @@ class CitedStat(BaseModel):
 
 
 class AgentAnswer(BaseModel):
-    """Structured final answer the agent returns (plan section 5)."""
+    """Structured final answer the agent returns (plan section 5).
+
+    ``grounded`` and ``verification_notes`` are the M5 audit trail: the
+    grounding node sets ``grounded=True`` only after every numeric claim in
+    ``answer_text`` has been checked against the tool outputs (programmatic
+    match + cheap-LLM backstop). Notes explain any correction/regeneration.
+    """
 
     answer_text: str
     visuals: list[str] = Field(
@@ -140,4 +146,12 @@ class AgentAnswer(BaseModel):
     )
     cited_stats: list[CitedStat] = Field(
         default_factory=list, description="The real numbers the answer references."
+    )
+    grounded: bool = Field(
+        default=False,
+        description="True only if every numeric claim in answer_text was verified against tool output.",
+    )
+    verification_notes: list[str] = Field(
+        default_factory=list,
+        description="Grounding-check audit trail: matched facts, corrections, or unresolved claims.",
     )

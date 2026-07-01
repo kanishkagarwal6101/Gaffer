@@ -8,6 +8,8 @@ to a served static dir and the file path is returned for the API to expose.
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from pathlib import Path
 
 import matplotlib
@@ -33,12 +35,16 @@ _SIZE_MIN = 120.0
 _SIZE_SPAN = 1100.0
 
 
-def _slug(text: str) -> str:
-    keep = [c.lower() if c.isalnum() else "-" for c in text.strip()]
-    slug = "".join(keep)
-    while "--" in slug:
-        slug = slug.replace("--", "-")
-    return slug.strip("-") or "shot-map"
+def slugify(text: str) -> str:
+    """ASCII slug for viz PNG filenames — safe on any CDN/deploy host.
+
+    Strip accents (é -> e), lowercase, collapse non-alphanumeric runs to a
+    single hyphen, trim leading/trailing hyphens.
+    """
+    decomposed = unicodedata.normalize("NFKD", text.strip())
+    ascii_text = "".join(c for c in decomposed if not unicodedata.combining(c))
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_text.lower())
+    return slug.strip("-") or "viz"
 
 
 def render_shot_map(
@@ -61,7 +67,7 @@ def render_shot_map(
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{_slug(title)}.png"
+    out_path = out_dir / f"{slugify(title)}.png"
 
     pitch = VerticalPitch(
         pitch_type="statsbomb",
@@ -193,7 +199,7 @@ def render_pass_network(
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{_slug(title)}.png"
+    out_path = out_dir / f"{slugify(title)}.png"
 
     df = passes_df if passes_df is not None else pd.DataFrame()
     if until_minute is not None and "minute" in df.columns and not df.empty:
@@ -319,7 +325,7 @@ def render_player_radar(
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{_slug(title)}.png"
+    out_path = out_dir / f"{slugify(title)}.png"
 
     labels = list(metrics_a.keys())
     if list(metrics_b.keys()) != labels:

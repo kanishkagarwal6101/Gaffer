@@ -1,10 +1,13 @@
-# Fresh Session Summary (2026-06-30)
+# Fresh Session Summary (2026-07-01)
 
-- **M0-M4 Complete**: The data-driven backend agent is feature-complete for CLI use.
-- **Current State**: 5 tools are live (`query_events`, `shot_map`, `pass_network`, `compare_players`, `tactics_lookup`). All run-of-play stat counts (excluding penalty shootouts) are consistent across the entire backend.
-- **Next Target (M5)**: Implement grounding verification: add a node to the agent loop that intersects the model's draft answer with canonical tool data and regenerates if discrepancies are found.
-- **Architecture**: LangGraph loop (plan → tools → answer). LiteLLM primary Gemini-Flash, Groq fallback. DuckDB store. Chroma-based RAG for tactics.
+- **M0-M7 Complete**: Full-stack feature-complete — backend agent + live React/Vite frontend.
+- **Today (2026-07-01)**:
+  - **Part A — Viz filename slugify**: `slugify()` added to `backend/app/viz/pitch.py`; strips accents, lowercases, collapses non-alphanumeric runs to hyphens. Used by all three renderers (`shot_map`, `pass_network`, `radar`). Tested via `scripts/test_slugify.py` (4 cases, ALL PASS). PNG filenames are now CDN-safe on any deploy host.
+  - **Part B — M7 frontend wired to live backend**: `frontend/src/api.ts` posts to `VITE_API_URL/chat`; `App.tsx` manages session UUID + live state; `ChatRail.tsx` renders grounded/corrected badges + stat chips; `AnalysisCanvas.tsx` shows hero PNG + canvas stat pill. CORS fix: both `localhost:5173` and `127.0.0.1:5173` whitelisted. E2E browser test confirmed: grounded badge, shot map PNG loaded, chips show shots/goals/xG.
+- **Current State**: 5 tools live (`query_events`, `shot_map`, `pass_network`, `compare_players`, `tactics_lookup`). All run-of-play stat counts (excluding penalty shootouts) consistent across entire backend.
+- **Architecture**: LangGraph loop (plan → tools → verify → answer, M5 grounding gate). LiteLLM primary Gemini-Flash, Groq fallback. DuckDB store. Chroma-based RAG for tactics. FastAPI /chat + StaticFiles on port 8000. React/Vite frontend on port 5173.
 - **CLI**: `cd backend && uv run python -m scripts.ask "..."`
+- **Next (M8)**: Polish + public deploy (Vercel free tier), README with demo GIF, open-source candidate.
 
 ---
 [GAFFER_PLAN.md#459A]
@@ -155,9 +158,9 @@ gaffer/
 | **M2** | One tool end-to-end: `shot_map` for a chosen player → correct xG → rendered PNG. Proves data→viz path | **[CC]** | done |
 | **M3** | The agent loop: wire LangGraph + LiteLLM(Gemini), expose `query_events` + `shot_map`, get one grounded text+viz answer | **[CC]** | done |
 | **M4** | Add `pass_network`, `compare_players`, and `tactics_lookup` (Chroma RAG) | Cursor + **[CC]** | done |
-| **M5** | Grounding check + structured final output | **[CC]** |  |
-| **M6** | FastAPI `/chat` endpoint + static viz serving | Cursor |  |
-| **M7** | React/Vite chat UI rendering answers + visuals | Cursor |  |
+| **M5** | Grounding check + structured final output | **[CC]** | done |
+| **M6** | FastAPI `/chat` endpoint + static viz serving | Cursor | done |
+| **M7** | React/Vite chat UI rendering answers + visuals | Cursor | done |
 | **M8** | Polish, deploy (Vercel + free backend host), README with a demo GIF | Cursor |  |
 
 Ship M1–M3 first and you already have a demoable thing. M4–M8 make it portfolio-grade.

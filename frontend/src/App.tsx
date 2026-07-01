@@ -2,44 +2,86 @@ import { useCallback, useRef, useState } from "react";
 import Header from "./components/Header";
 import ChatRail from "./components/ChatRail";
 import AnalysisCanvas from "./components/AnalysisCanvas";
-import { buildShots, GAFFER_REPLY, type Message } from "./data";
+import {
+  ChatError,
+  deriveCanvasTitle,
+  postChat,
+  wasCorrected,
+  type CitedStat,
+} from "./api";
+import { buildShots, type Message } from "./data";
 
 type View = "main" | "empty";
 
-// Opponent shots + the goal annotation are always on in v1 (editor props in the
-// original export). Backend wiring will make these dynamic later.
 const SHOW_OPPONENT = true;
 const ANNOTATE = true;
+
+function newSessionId(): string {
+  return crypto.randomUUID();
+}
 
 export default function App() {
   const [view, setView] = useState<View>("main");
   const [fresh, setFresh] = useState(false);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [extra, setExtra] = useState<Message[]>([]);
-  const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [citedStats, setCitedStats] = useState<CitedStat[]>([]);
+  const [canvasTitle, setCanvasTitle] = useState<string | null>(null);
+  const sessionId = useRef(newSessionId());
 
-  const send = useCallback((text: string) => {
+  const send = useCallback(async (text: string) => {
     const t = text.trim();
-    if (!t) return;
+    if (!t || thinking) return;
 
     setView("main");
     setInput("");
     setThinking(true);
-    setExtra((prev) => [
+    setMessages((prev) => [
       ...prev,
       { role: "user", label: "YOU", showDot: false, text: t },
     ]);
 
-    if (replyTimer.current) clearTimeout(replyTimer.current);
-    replyTimer.current = setTimeout(() => {
-      setThinking(false);
-      setExtra((prev) => [
+    try {
+      const res = await postChat(t, sessionId.current);
+      const visual = res.visuals.length ? res.visuals[res.visuals.length - 1] : null;
+
+      setImageSrc(visual);
+      setCitedStats(res.cited_stats);
+      setCanvasTitle(deriveCanvasTitle(res.cited_stats));
+
+      setMessages((prev) => [
         ...prev,
-        { role: "gaffer", label: "GAFFER", showDot: true, text: GAFFER_REPLY },
+        {
+          role: "gaffer",
+          label: "GAFFER",
+          showDot: true,
+          text: res.answer_text,
+          grounded: res.grounded,
+          corrected: wasCorrected(res.verification_notes),
+          citedStats: res.cited_stats,
+        },
       ]);
-    }, 2000);
-  }, []);
+    } catch (err) {
+      const msg =
+        err instanceof ChatError
+          ? err.message
+          : "Could not reach Gaffer. Is the backend running?";
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "gaffer",
+          label: "GAFFER",
+          showDot: false,
+          text: msg,
+          error: true,
+        },
+      ]);
+    } finally {
+      setThinking(false);
+    }
+  }, [thinking]);
 
   const handleExample = useCallback(
     (text: string) => {
@@ -50,11 +92,14 @@ export default function App() {
   );
 
   const handleNewAnalysis = useCallback(() => {
-    if (replyTimer.current) clearTimeout(replyTimer.current);
+    sessionId.current = newSessionId();
     setView("empty");
     setFresh(true);
     setThinking(false);
-    setExtra([]);
+    setMessages([]);
+    setImageSrc(null);
+    setCitedStats([]);
+    setCanvasTitle(null);
   }, []);
 
   const isMain = view === "main";
@@ -70,7 +115,7 @@ export default function App() {
         <ChatRail
           isEmpty={isEmpty}
           showPrebaked={showPrebaked}
-          messages={extra}
+          messages={messages}
           thinking={thinking}
           input={input}
           onInput={setInput}
@@ -83,6 +128,9 @@ export default function App() {
           shots={shots}
           annotate={ANNOTATE}
           onExample={handleExample}
+          imageSrc={imageSrc}
+          citedStats={citedStats}
+          canvasTitle={canvasTitle}
         />
       </div>
     </div>

@@ -18,7 +18,7 @@ from typing import Any, TypedDict
 from langgraph.graph import END, StateGraph
 
 from .. import llm
-from . import tools
+from . import grounding, tools
 from .schemas import AgentAnswer, CitedStat
 
 logger = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ class AgentState(TypedDict, total=False):
     tool_results: list[dict[str, Any]]
     iterations: int
     draft: str
+    verification: grounding.VerificationResult
     answer: AgentAnswer
 
 
@@ -124,12 +125,32 @@ def tools_node(state: AgentState) -> AgentState:
     }
 
 
+def verify_node(state: AgentState) -> AgentState:
+    """M5 grounding gate: check every numeric claim in the draft against tool outputs.
+
+    Runs the programmatic tolerance check first, then a cheap-LLM backstop, and
+    rewrites the draft once if unsupported claims are found. The result carries
+    a ``grounded`` flag and an audit trail into ``AgentAnswer``.
+    """
+    draft = state.get("draft", "") or ""
+    result = grounding.verify(draft, state.get("tool_results", []))
+    logger.info(
+        "grounding: grounded=%s notes=%s unsupported=%s",
+        result.grounded,
+        result.notes,
+        [u.get("token") for u in result.unsupported],
+    )
+    return {"verification": result, "draft": result.draft}
+
+
 def answer_node(state: AgentState) -> AgentState:
-    """Assemble the structured AgentAnswer from the draft + tool outputs.
+    """Assemble the structured AgentAnswer from the (possibly rewritten) draft.
 
     Iterates over every tool result and asks the per-tool extractor what to
     surface in ``visuals``/``cited_stats``. Errored results are skipped. Image
-    URLs are de-duplicated while preserving the order the tools ran in.
+    URLs are de-duplicated while preserving the order the tools ran in. The
+    grounding audit trail from ``verify_node`` lands in ``grounded`` /
+    ``verification_notes``.
     """
     results = state.get("tool_results", [])
 
@@ -149,10 +170,21 @@ def answer_node(state: AgentState) -> AgentState:
                 visuals.append(url)
         cited += c
 
+    verification = state.get("verification")
+    grounded = bool(verification.grounded) if verification else False
+    notes = list(verification.notes) if verification else []
+    if verification and verification.unsupported:
+        notes.append(
+            "unresolved claims: "
+            + ", ".join(u.get("token", "?") for u in verification.unsupported)
+        )
+
     answer = AgentAnswer(
         answer_text=state.get("draft", "").strip(),
         visuals=visuals,
         cited_stats=cited,
+        grounded=grounded,
+        verification_notes=notes,
     )
     return {"answer": answer}
 
@@ -259,8 +291,9 @@ _EXTRACTORS = {
 
 
 def _after_plan(state: AgentState) -> str:
+    """Route to tool execution when the planner asked for tools, else to the M5 verify gate."""
     last = state["messages"][-1]
-    return "tools" if last.get("tool_calls") else "answer"
+    return "tools" if last.get("tool_calls") else "verify"
 
 
 def _tool_content_for_llm(result: dict[str, Any]) -> dict[str, Any]:
@@ -301,30 +334,40 @@ _GRAPH = None
 
 
 def build_graph():
-    """Compile the plan -> tools -> answer state graph."""
+    """Compile the plan -> tools -> verify -> answer state graph."""
     builder = StateGraph(AgentState)
     builder.add_node("plan", plan_node)
     builder.add_node("tools", tools_node)
+    builder.add_node("verify", verify_node)
     builder.add_node("answer", answer_node)
 
     builder.set_entry_point("plan")
-    builder.add_conditional_edges("plan", _after_plan, {"tools": "tools", "answer": "answer"})
+    builder.add_conditional_edges("plan", _after_plan, {"tools": "tools", "verify": "verify"})
     builder.add_edge("tools", "plan")
+    builder.add_edge("verify", "answer")
     builder.add_edge("answer", END)
     return builder.compile()
 
 
-def run(question: str) -> AgentAnswer:
-    """Run the agent on a natural-language question and return the structured answer."""
+def run(question: str, history: list[dict] | None = None) -> AgentAnswer:
+    """Run the agent on a natural-language question and return the structured answer.
+
+    ``history`` is an optional list of prior ``{role, content}`` message pairs
+    (user and assistant turns) injected between the system prompt and the current
+    question, giving the model conversational context. The /chat endpoint populates
+    this from the in-memory session store.
+    """
     global _GRAPH
     if _GRAPH is None:
         _GRAPH = build_graph()
 
+    messages: list[dict] = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    if history:
+        messages += history
+    messages.append({"role": "user", "content": question})
+
     init: AgentState = {
-        "messages": [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": question},
-        ],
+        "messages": messages,
         "tool_results": [],
         "iterations": 0,
     }

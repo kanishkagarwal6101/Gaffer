@@ -1,7 +1,8 @@
 """Ask the Gaffer agent one question from the command line (plan section 5).
 
-Runs the M3 LangGraph loop (question -> plan -> tool(s) -> grounded answer) and
-prints the answer text, the cited stats, and any rendered PNG path.
+Runs the M5 LangGraph loop (question -> plan -> tool(s) -> verify -> grounded
+answer) and prints the answer text, the grounding badge + audit trail, the
+cited stats, and any rendered PNG path.
 
 Requires GEMINI_API_KEY (and optionally GROQ_API_KEY) in the repo-root ``.env``.
 
@@ -44,6 +45,13 @@ def main(argv: list[str] | None = None) -> None:
     answer = run(question)
 
     print(f"A: {answer.answer_text}\n")
+
+    badge = "grounded" if answer.grounded else "NOT grounded"
+    print(f"Grounding: {badge}")
+    if answer.verification_notes:
+        for note in answer.verification_notes:
+            print(f"  * {note}")
+    print()
 
     if answer.cited_stats:
         print("Cited stats:")
